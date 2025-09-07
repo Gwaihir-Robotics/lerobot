@@ -14,9 +14,9 @@ This guide walks you through setting up your Mini Mapper differential drive robo
 
 ## Part 1: Raspberry Pi Setup
 
-### 1.1 Install Ubuntu 24.04 LTS on Raspberry Pi
+### 1.1 Install Ubuntu 22.04 LTS on Raspberry Pi
 
-1. Flash Ubuntu 24.04 LTS Server to SD card using Raspberry Pi Imager
+1. Flash Ubuntu 22.04 LTS Server to SD card using Raspberry Pi Imager
 2. Enable SSH and configure WiFi during imaging process
 3. Boot the Pi and SSH in: `ssh ubuntu@<pi-ip-address>`
 
@@ -58,6 +58,9 @@ source ~/lerobot_venv/bin/activate
 # Upgrade pip in virtual environment
 pip install --upgrade pip
 
+# Install any missing dependencies that ROS2 packages might need
+pip install typeguard
+
 # Install in development mode
 pip install -e .
 
@@ -72,29 +75,88 @@ echo "cd ~/lerobot" >> ~/.bashrc
 ### 1.4 Configure Camera
 
 ```bash
-# Enable camera interface
-sudo raspi-config
-# Navigate to Interface Options > Camera > Enable
+# Install camera utilities
+sudo apt install v4l-utils fswebcam -y
 
-# Test camera
-libcamera-hello --timeout 2000
+# Check if any USB cameras are connected
+lsusb | grep -i camera
 
-# Verify camera device
+# Check for any video devices
 ls /dev/video*
-# Should show /dev/video0
+
+# If you have a Raspberry Pi camera module, check if it's detected
+# (This works on Ubuntu unlike vcgencmd)
+dmesg | grep -i camera
+
+# Test camera with v4l2 (if any video devices found)
+v4l2-ctl --list-devices
+
+# Find the correct camera device (Pi camera system uses higher numbered devices)
+# Look for a device that supports capture
+for device in /dev/video*; do
+    if v4l2-ctl -d $device --list-formats-ext 2>/dev/null | grep -q "YUYV\|MJPG\|RGB"; then
+        echo "Found camera device: $device"
+        CAMERA_DEVICE=$device
+        break
+    fi
+done
+
+# Test camera capture with OpenCV (more compatible with Pi camera system)
+if [ ! -z "$CAMERA_DEVICE" ]; then
+    echo "Found camera device: $CAMERA_DEVICE"
+    echo "Testing with OpenCV..."
+    
+    python -c "
+import cv2
+import sys
+
+# Try to open the camera
+device_path = '$CAMERA_DEVICE'
+print(f'Attempting to open camera: {device_path}')
+
+# OpenCV can handle device paths directly
+cap = cv2.VideoCapture(device_path)
+
+if not cap.isOpened():
+    print('❌ Failed to open camera')
+    sys.exit(1)
+
+# Try to read a frame
+ret, frame = cap.read()
+if ret:
+    # Save test image
+    cv2.imwrite('opencv_test.jpg', frame)
+    print('✅ Camera test successful! Image saved as opencv_test.jpg')
+    print(f'Frame dimensions: {frame.shape[1]}x{frame.shape[0]}')
+else:
+    print('❌ Failed to capture frame')
+    
+cap.release()
+"
+else
+    echo "No suitable camera device found"
+fi
 ```
 
 ### 1.5 Configure Serial Port for Servos
 
 ```bash
-# Disable serial console (if using GPIO serial)
-sudo raspi-config
-# Advanced Options > Serial Port > Login shell: No, Serial interface: Yes
-
-# Add user to dialout group
+# Add user to dialout group for serial port access
 sudo usermod -a -G dialout $USER
 
+# If using GPIO serial pins (not USB), disable serial console
+sudo systemctl disable serial-getty@ttyS0.service
+sudo systemctl disable serial-getty@ttyAMA0.service
+
+# Check available serial devices
+ls /dev/tty*
+
+# For USB-connected MotorBus adapter, device will typically be:
+# /dev/ttyACM0 or /dev/ttyUSB0
+
 # Logout and login again for group changes to take effect
+exit
+# Then SSH back in
 ```
 
 ## Part 2: Servo Configuration
@@ -234,7 +296,7 @@ cd ~/lerobot
 hostname -I
 
 # Start Mini Mapper host (runs for 30 seconds by default)
-python3 -m lerobot.robots.mini_mapper.mini_mapper_host
+python -m lerobot.robots.mini_mapper.mini_mapper_host
 ```
 
 You should see:
@@ -325,7 +387,7 @@ pip install keyboard
 nano teleop_mini_mapper.py
 
 # Run teleop
-python3 teleop_mini_mapper.py
+python teleop_mini_mapper.py
 ```
 
 ## Part 5: Verify Camera Stream
@@ -368,7 +430,7 @@ finally:
     cv2.destroyAllWindows()
 EOF
 
-python3 test_camera.py
+python test_camera.py
 ```
 
 ## Troubleshooting

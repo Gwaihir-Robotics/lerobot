@@ -21,9 +21,15 @@ from ..config import RobotConfig
 
 
 def mini_mapper_cameras_config() -> dict[str, CameraConfig]:
+    # For Raspberry Pi camera on Ubuntu, use the detected camera device
+    # Modern Pi camera systems typically use /dev/video20+ devices
     return {
         "front": OpenCVCameraConfig(
-            index_or_path="/dev/video0", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_0
+            index_or_path="/dev/video24",  # Detected camera device
+            fps=30, 
+            width=640, 
+            height=480, 
+            rotation=Cv2Rotation.ROTATE_0
         ),
     }
 
