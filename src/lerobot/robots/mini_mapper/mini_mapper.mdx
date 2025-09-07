@@ -1,0 +1,54 @@
+# Mini Mapper - Autonomous Mapping Robot
+
+A lidar-enabled differential drive robot for autonomous mapping and navigation using ROS2.
+
+## Goal
+Our robot should be able to map and navigate to rooms in a building and return to the starting point when mapping is completed. 
+
+I want to be able to view the maps on the laptop and/or the additional control desktop. I would like to view the maps in rviz2/rerun.io as they are generated. We should leverage as much FOSS packages for the slam/lidar/mapping as possible such as nav2.org.
+
+## Design
+- **Differential Drive Robot**: 2x independent Feetech STS3215 servos with position-based control, trailing castor
+- **Battery Powered**: 12V power supply via USB-C PD trigger cable
+- **Computing Platform**: ROS2 (Kilted) on Raspberry Pi 4B running Ubuntu 24.04 LTS
+- **Sensors**: Slamtech C1 lidar for SLAM and obstacle detection
+- **Communication**: Remote operation via ROS2 over network (Tailscale)
+
+## Hardware Specifications
+
+### Servos: Feetech STS3215
+- **Control Method**: Position-based differential drive (continuous rotation simulated)
+- **Power Requirements**: 12V (minimum 6V)
+- **Communication**: Half-duplex TTL serial via MotorBus adapter
+- **IDs**: Left wheel = 7, Right wheel = 8
+
+### Physical Parameters
+- **Physical Dimensions**: 
+    - Length 0.248m (~9.75 inches)
+    - Width 0.248m (~9.75 inches)
+    - Height: 0.130m (~5 inches)
+- **Wheel Radius**: 0.05m (50mm wheels)
+- **Max Linear Speed**: 0.5 m/s
+- **Max Angular Speed**: 2.0 rad/s
+
+## Project Structure
+
+```
+tbd
+```
+
+## Quick Start
+
+### 1. Hardware Setup
+- tbd
+
+## Next Development Steps
+
+1. **Lidar Integration**: Set up Slamtech C1 lidar driver
+2. **SLAM Configuration**: Configure slam_toolbox for mapping
+3. **Navigation Setup**: Integrate nav2 for autonomous navigation  
+4. **Visualization**: Set up RViz2 for real-time map viewing
+5. **Testing**: Full autonomous mapping validation
+
+## Bigger Picture
+Developing autonomous ground-based robotics that leverage SLAM/lidar. This is a baseline ROS2 configuration proof of concept that can scale to larger systems (larger servos, larger bodies, more battery, more compute etc.).
