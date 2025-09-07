@@ -33,6 +33,7 @@ from lerobot.robots import (  # noqa: F401
     koch_follower,
     lekiwi,
     make_robot_from_config,
+    mini_mapper,
     so100_follower,
     so101_follower,
 )
@@ -52,6 +53,7 @@ COMPATIBLE_DEVICES = [
     "so101_follower",
     "so101_leader",
     "lekiwi",
+    "mini_mapper",
 ]
 
 
