@@ -178,7 +178,7 @@ source ~/lerobot_venv/bin/activate
 # Run servo setup for Mini Mapper
 python -m lerobot.setup_motors \
   --robot.type mini_mapper \
-  --robot.robot_id mini_mapper_01
+  --robot.id mini_mapper_01
 
 # Follow the prompts:
 # 1. Connect left wheel servo (ID will be set to 7)
