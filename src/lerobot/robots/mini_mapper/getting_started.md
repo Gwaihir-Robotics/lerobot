@@ -43,19 +43,30 @@ source ~/.bashrc
 ### 1.3 Install LeRobot
 
 ```bash
-# Install Python dependencies
-sudo apt install python3-pip python3-venv python3-opencv libopencv-dev -y
+# Install Python dependencies and tools
+sudo apt install python3-pip python3-venv python3-full python3-opencv libopencv-dev python-is-python3 -y
 
 # Clone LeRobot repository
 cd ~
-git clone git@github.com:Gwaihir-Robotics/lerobot.gi
+git clone git@github.com:Gwaihir-Robotics/lerobot.git
 cd lerobot
 
+# Create and activate virtual environment
+python3 -m venv ~/lerobot_venv
+source ~/lerobot_venv/bin/activate
+
+# Upgrade pip in virtual environment
+pip install --upgrade pip
+
 # Install in development mode
-pip3 install -e .
+pip install -e .
 
 # Install additional dependencies for Mini Mapper
-pip3 install pyserial zmq opencv-python numpy
+pip install pyserial zmq opencv-python numpy
+
+# Add virtual environment activation to bashrc for convenience
+echo "source ~/lerobot_venv/bin/activate" >> ~/.bashrc
+echo "cd ~/lerobot" >> ~/.bashrc
 ```
 
 ### 1.4 Configure Camera
@@ -99,8 +110,11 @@ sudo usermod -a -G dialout $USER
 ```bash
 cd ~/lerobot
 
+# Ensure virtual environment is activated
+source ~/lerobot_venv/bin/activate
+
 # Run servo setup for Mini Mapper
-python3 -m lerobot.common.robot.setup_motors \
+python -m lerobot.common.robot.setup_motors \
   --robot-type mini_mapper \
   --robot-id mini_mapper_01
 
@@ -116,7 +130,7 @@ python3 -m lerobot.common.robot.setup_motors \
 
 ```bash
 # Test left wheel servo (ID 7)
-python3 -c "
+python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
 config = MiniMapperConfig()
 robot = MiniMapper(config)
@@ -128,7 +142,7 @@ robot.disconnect()
 "
 
 # Test right wheel servo (ID 8)  
-python3 -c "
+python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
 config = MiniMapperConfig()
 robot = MiniMapper(config)
@@ -144,7 +158,7 @@ robot.disconnect()
 
 ```bash
 # Run calibration (with both servos connected)
-python3 -c "
+python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
 config = MiniMapperConfig(robot_id='mini_mapper_01')
 robot = MiniMapper(config)
@@ -162,7 +176,7 @@ robot.disconnect()
 
 ```bash
 # Test forward movement
-python3 -c "
+python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
 config = MiniMapperConfig(robot_id='mini_mapper_01')
 robot = MiniMapper(config)
@@ -180,7 +194,7 @@ robot.disconnect()
 "
 
 # Test rotation
-python3 -c "
+python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
 config = MiniMapperConfig(robot_id='mini_mapper_01')
 robot = MiniMapper(config)
