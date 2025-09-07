@@ -222,7 +222,7 @@ robot.disconnect()
 # Run calibration (with both servos connected)
 python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
-config = MiniMapperConfig(robot_id='mini_mapper_01')
+config = MiniMapperConfig(id='mini_mapper_01')
 robot = MiniMapper(config)
 robot.connect(calibrate=True)
 robot.disconnect()
@@ -240,7 +240,7 @@ robot.disconnect()
 # Test forward movement
 python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
-config = MiniMapperConfig(robot_id='mini_mapper_01')
+config = MiniMapperConfig(id='mini_mapper_01')
 robot = MiniMapper(config)
 robot.connect()
 
@@ -258,7 +258,7 @@ robot.disconnect()
 # Test rotation
 python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
-config = MiniMapperConfig(robot_id='mini_mapper_01')
+config = MiniMapperConfig(id='mini_mapper_01')
 robot = MiniMapper(config)
 robot.connect()
 
