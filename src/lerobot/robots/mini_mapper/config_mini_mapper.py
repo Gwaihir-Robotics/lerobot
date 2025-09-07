@@ -29,7 +29,7 @@ def mini_mapper_cameras_config() -> dict[str, CameraConfig]:
             fps=30, 
             width=640, 
             height=480, 
-            rotation=Cv2Rotation.ROTATE_0
+            rotation=Cv2Rotation.NO_ROTATION
         ),
     }
 
