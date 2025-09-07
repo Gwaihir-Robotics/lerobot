@@ -61,8 +61,8 @@ pip install --upgrade pip
 # Install any missing dependencies that ROS2 packages might need
 pip install typeguard
 
-# Install in development mode
-pip install -e .
+# Install in development mode with Feetech servo support
+pip install -e ".[feetech]"
 
 # Install additional dependencies for Mini Mapper
 pip install pyserial zmq opencv-python numpy
@@ -181,8 +181,8 @@ python -m lerobot.setup_motors \
   --robot.id mini_mapper_01
 
 # Follow the prompts:
-# 1. Connect left wheel servo (ID will be set to 7)
-# 2. When prompted, disconnect left servo and connect right servo
+# 1. Connect right wheel servo only (ID will be set to 8)
+# 2. When prompted, disconnect right servo and connect left servo
 # 3. Right wheel servo ID will be set to 8
 ```
 
