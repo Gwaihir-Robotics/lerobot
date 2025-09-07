@@ -45,6 +45,10 @@ def make_robot_from_config(config: RobotConfig) -> Robot:
         from .mini_mapper import MiniMapper
 
         return MiniMapper(config)
+    elif config.type == "mini_mapper_client":
+        from .mini_mapper import MiniMapperClient
+
+        return MiniMapperClient(config)
     elif config.type == "stretch3":
         from .stretch3 import Stretch3Robot
 
