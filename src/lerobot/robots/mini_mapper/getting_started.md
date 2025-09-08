@@ -52,8 +52,8 @@ git clone git@github.com:Gwaihir-Robotics/lerobot.git
 cd lerobot
 
 # Create and activate virtual environment
-python3 -m venv ~/lerobot_venv
-source ~/lerobot_venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 
 # Upgrade pip in virtual environment
 pip install --upgrade pip
@@ -68,7 +68,7 @@ pip install -e ".[feetech]"
 pip install pyserial zmq opencv-python numpy
 
 # Add virtual environment activation to bashrc for convenience
-echo "source ~/lerobot_venv/bin/activate" >> ~/.bashrc
+echo "source ~/lerobot/venv/bin/activate" >> ~/.bashrc
 echo "cd ~/lerobot" >> ~/.bashrc
 ```
 
@@ -173,7 +173,7 @@ exit
 cd ~/lerobot
 
 # Ensure virtual environment is activated
-source ~/lerobot_venv/bin/activate
+source venv/bin/activate
 
 # Run servo setup for Mini Mapper
 python -m lerobot.setup_motors \
@@ -338,8 +338,16 @@ cd ~/lerobot
 # Get Pi's IP address
 hostname -I
 
-# Start Mini Mapper host (runs for 30 seconds by default)
-python -m lerobot.robots.mini_mapper.mini_mapper_host
+# Start Mini Mapper host with options:
+
+# Option 1: Run for 10 minutes
+python -m lerobot.robots.mini_mapper.mini_mapper_host --duration 600
+
+# Option 2: Run indefinitely (recommended for development)
+python -m lerobot.robots.mini_mapper.mini_mapper_host --duration 0
+
+# Option 3: Run with specific robot ID
+python -m lerobot.robots.mini_mapper.mini_mapper_host --duration 0 --robot-id mini_mapper_01
 ```
 
 You should see:
@@ -353,84 +361,26 @@ INFO:root:Waiting for commands...
 ### 4.3 Connect from Laptop
 
 ```bash
-# On laptop, create a simple teleop script
-cat > teleop_mini_mapper.py << 'EOF'
-#!/usr/bin/env python3
+# On laptop, install LeRobot with the same setup as Pi
+git clone https://github.com/Gwaihir-Robotics/lerobot.git
+cd lerobot
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install typeguard
+pip install -e ".[feetech]"
+pip install pyserial zmq opencv-python numpy
 
-import time
-from lerobot.robots.mini_mapper import MiniMapperClient, MiniMapperClientConfig
+# Run the teleop client (replace IP with your Pi's IP)
+python -m lerobot.robots.mini_mapper.teleop_mini_mapper --robot-ip 100.64.227.10
+```
 
-# Replace with your Pi's IP address
-PI_IP = "192.168.1.100"  # Change this!
-
-config = MiniMapperClientConfig(remote_ip=PI_IP)
-robot = MiniMapperClient(config)
-
-print("Connecting to Mini Mapper...")
-robot.connect()
-print("Connected! Use WASD to control:")
-print("W/S: Forward/Backward")  
-print("A/D: Rotate Left/Right")
-print("R/F: Speed Up/Down")
-print("Q: Quit")
-
-try:
-    import keyboard
-    
-    while True:
-        pressed_keys = []
-        if keyboard.is_pressed('w'): pressed_keys.append('w')
-        if keyboard.is_pressed('s'): pressed_keys.append('s') 
-        if keyboard.is_pressed('a'): pressed_keys.append('a')
-        if keyboard.is_pressed('d'): pressed_keys.append('d')
-        if keyboard.is_pressed('r'): pressed_keys.append('r')
-        if keyboard.is_pressed('f'): pressed_keys.append('f')
-        if keyboard.is_pressed('q'): 
-            print("Quitting...")
-            break
-            
-        # Generate movement commands
-        action = robot._from_keyboard_to_base_action(pressed_keys)
-        robot.send_action(action)
-        
-        time.sleep(0.1)  # 10Hz control loop
-        
-except ImportError:
-    print("Install keyboard library: pip install keyboard")
-    print("Or use manual control:")
-    
-    while True:
-        cmd = input("Enter command (w/s/a/d/q): ").lower()
-        if cmd == 'q':
-            break
-        elif cmd == 'w':
-            action = {'x.vel': 0.2, 'y.vel': 0.0, 'theta.vel': 0.0}
-        elif cmd == 's': 
-            action = {'x.vel': -0.2, 'y.vel': 0.0, 'theta.vel': 0.0}
-        elif cmd == 'a':
-            action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 30.0}
-        elif cmd == 'd':
-            action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': -30.0}
-        else:
-            action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
-            
-        robot.send_action(action)
-        time.sleep(0.1)
-
-finally:
-    robot.disconnect()
-    print("Disconnected.")
-EOF
-
-# Make executable and install keyboard library
-chmod +x teleop_mini_mapper.py
-pip install keyboard
-
-# Update the PI_IP address in the script
-nano teleop_mini_mapper.py
-
-# Run teleop
-python teleop_mini_mapper.py
+The teleop script provides:
+- **Command-line interface** with W/A/S/D controls
+- **Variable speed control** (R/F to adjust)
+- **Real-time robot feedback** (velocity display)
+- **Safety features** (automatic stop on disconnect)
+- **Clear command prompts** and status messages
 ```
 
 ## Part 5: Verify Camera Stream

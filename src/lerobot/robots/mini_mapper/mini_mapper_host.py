@@ -48,15 +48,33 @@ class MiniMapperHost:
 
 
 def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Mini Mapper Host")
+    parser.add_argument(
+        "--duration", 
+        type=int, 
+        default=300,  # 5 minutes default
+        help="Connection duration in seconds (0 for infinite)"
+    )
+    parser.add_argument(
+        "--robot-id",
+        type=str,
+        default=None,
+        help="Robot ID for calibration"
+    )
+    
+    args = parser.parse_args()
+    
     logging.info("Configuring MiniMapper")
-    robot_config = MiniMapperConfig()
+    robot_config = MiniMapperConfig(id=args.robot_id) if args.robot_id else MiniMapperConfig()
     robot = MiniMapper(robot_config)
 
     logging.info("Connecting MiniMapper")
     robot.connect()
 
     logging.info("Starting HostAgent")
-    host_config = MiniMapperHostConfig()
+    host_config = MiniMapperHostConfig(connection_time_s=args.duration)
     host = MiniMapperHost(host_config)
 
     last_cmd_time = time.time()
@@ -66,7 +84,12 @@ def main():
         # Business logic
         start = time.perf_counter()
         duration = 0
-        while duration < host.connection_time_s:
+        infinite_mode = host.connection_time_s <= 0
+        
+        print(f"Host running for {'infinite time' if infinite_mode else f'{host.connection_time_s} seconds'}")
+        print("Press Ctrl+C to stop")
+        
+        while infinite_mode or duration < host.connection_time_s:
             loop_start_time = time.time()
             try:
                 msg = host.zmq_cmd_socket.recv_string(zmq.NOBLOCK)
@@ -110,8 +133,10 @@ def main():
             elapsed = time.time() - loop_start_time
 
             time.sleep(max(1 / host.max_loop_freq_hz - elapsed, 0))
-            duration = time.perf_counter() - start
-        print("Cycle time reached.")
+            if not infinite_mode:
+                duration = time.perf_counter() - start
+        if not infinite_mode:
+            print("Cycle time reached.")
 
     except KeyboardInterrupt:
         print("Keyboard interrupt received. Exiting...")
