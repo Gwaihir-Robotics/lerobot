@@ -24,10 +24,10 @@ def mini_mapper_cameras_config() -> dict[str, CameraConfig]:
     # Re-enabled with Pi camera compatible settings
     return {
         "front": OpenCVCameraConfig(
-            index_or_path="/dev/video24",  # Detected Pi camera device
-            fps=10,  # Lower FPS for Pi camera compatibility
-            width=640, 
-            height=480, 
+            index_or_path=0,  # Use camera index instead of device path
+            fps=15,  # Try moderate FPS
+            width=320,  # Lower resolution for compatibility
+            height=240, 
             rotation=Cv2Rotation.NO_ROTATION
         ),
     }
