@@ -247,7 +247,7 @@ robot.connect()
 # Move forward slowly
 action = {'x.vel': 0.1, 'y.vel': 0.0, 'theta.vel': 0.0}
 robot.send_action(action)
-import time; time.sleep(2)
+import time; time.sleep(10)
 
 # Stop
 action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}

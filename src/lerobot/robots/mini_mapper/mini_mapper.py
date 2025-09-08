@@ -248,7 +248,7 @@ class MiniMapper(Robot):
         wheel_raw = [self._degps_to_raw(deg) for deg in wheel_degps]
 
         return {
-            "base_left_wheel": wheel_raw[0],
+            "base_left_wheel": -wheel_raw[0],  # Invert left wheel to fix direction
             "base_right_wheel": wheel_raw[1],
         }
 
@@ -272,7 +272,8 @@ class MiniMapper(Robot):
           A dict with body velocities: {"x.vel": float, "y.vel": 0.0, "theta.vel": float}
         """
         # Convert raw commands to deg/s
-        omega_left_degps = self._raw_to_degps(left_wheel_speed)
+        # Apply same inversion as in forward kinematics
+        omega_left_degps = self._raw_to_degps(-left_wheel_speed)  # Invert left wheel
         omega_right_degps = self._raw_to_degps(right_wheel_speed)
         
         # Convert to rad/s
