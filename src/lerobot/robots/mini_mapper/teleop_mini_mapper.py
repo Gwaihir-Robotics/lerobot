@@ -32,20 +32,32 @@ from lerobot.robots.mini_mapper import MiniMapperClient, MiniMapperClientConfig
 class NonBlockingInput:
     """Non-blocking keyboard input handler for real-time control"""
     def __init__(self):
-        self.old_settings = termios.tcgetattr(sys.stdin)
-        tty.cbreak(sys.stdin.fileno())
+        try:
+            self.old_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+            self.unix_mode = True
+        except (ImportError, AttributeError, termios.error):
+            self.unix_mode = False
+            print("⚠️  Non-blocking input not available - using simplified mode")
         
     def __enter__(self):
         return self
         
     def __exit__(self, type, value, traceback):
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+        if self.unix_mode:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
         
     def get_char(self):
         """Get a single character without blocking"""
-        import select
-        if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
-            return sys.stdin.read(1)
+        if not self.unix_mode:
+            return None
+            
+        try:
+            import select
+            if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+                return sys.stdin.read(1)
+        except (ImportError, OSError):
+            pass
         return None
 
 
@@ -112,78 +124,115 @@ def main():
     
     try:
         with NonBlockingInput() as input_handler:
-            print(f"\n[Speed: {speed_levels[current_speed_idx]:.1f}m/s] Ready! Use W/A/S/D keys...")
-            
-            while True:
-                # Read any available key presses
-                char = input_handler.get_char()
-                if char:
-                    char = char.lower()
-                    if char == 'q':
-                        print("\nQuitting...")
+            if not input_handler.unix_mode:
+                # Fallback to simple input mode
+                print("\n🔄 Using simple command mode (press Enter after each command)")
+                while True:
+                    cmd = input(f"\n[Speed: {speed_levels[current_speed_idx]:.1f}m/s] Command (w/s/a/d/r/f/q): ").lower().strip()
+                    
+                    if cmd == 'q':
                         break
-                    elif char == ' ':  # Space for emergency stop
-                        pressed_keys.clear()
-                        print("\n🛑 Emergency stop!")
-                    elif char == 'r':
+                    elif cmd == 'w':
+                        action = {'x.vel': speed_levels[current_speed_idx], 'y.vel': 0.0, 'theta.vel': 0.0}
+                    elif cmd == 's': 
+                        action = {'x.vel': -speed_levels[current_speed_idx], 'y.vel': 0.0, 'theta.vel': 0.0}
+                    elif cmd == 'a':
+                        action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': rotation_levels[current_speed_idx]}
+                    elif cmd == 'd':
+                        action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': -rotation_levels[current_speed_idx]}
+                    elif cmd == 'r':
                         current_speed_idx = min(current_speed_idx + 1, len(speed_levels) - 1)
-                        print(f"\n⚡ Speed: {speed_levels[current_speed_idx]:.1f}m/s")
-                    elif char == 'f':
+                        print(f"⚡ Speed: {speed_levels[current_speed_idx]:.1f}m/s")
+                        continue
+                    elif cmd == 'f':
                         current_speed_idx = max(current_speed_idx - 1, 0)
-                        print(f"\n🐌 Speed: {speed_levels[current_speed_idx]:.1f}m/s")
-                    elif char in 'wasd':
-                        pressed_keys[char] = time.time()  # Record when key was pressed
-                
-                # Remove expired keys (simulate key release)
-                current_time = time.time()
-                expired_keys = [k for k, t in pressed_keys.items() if current_time - t > key_timeout]
-                for k in expired_keys:
-                    del pressed_keys[k]
-                
-                # Calculate current action based on pressed keys
-                action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
-                
-                if 'w' in pressed_keys:
-                    action['x.vel'] += speed_levels[current_speed_idx]
-                if 's' in pressed_keys:
-                    action['x.vel'] -= speed_levels[current_speed_idx]
-                if 'a' in pressed_keys:
-                    action['theta.vel'] += rotation_levels[current_speed_idx]
-                if 'd' in pressed_keys:
-                    action['theta.vel'] -= rotation_levels[current_speed_idx]
-                
-                # Only send action if it changed
-                if action != last_action:
+                        print(f"🐌 Speed: {speed_levels[current_speed_idx]:.1f}m/s")
+                        continue
+                    else:
+                        action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
+                    
                     try:
                         robot.send_action(action)
-                        last_action = action.copy()
-                        
-                        # Show movement status
-                        if any(abs(action[k]) > 0.001 for k in action):
-                            status = []
-                            if action['x.vel'] > 0: status.append("↑FWD")
-                            elif action['x.vel'] < 0: status.append("↓REV")
-                            if action['theta.vel'] > 0: status.append("↺LEFT")
-                            elif action['theta.vel'] < 0: status.append("↻RIGHT")
-                            print(f"\r🤖 {' '.join(status) if status else 'STOPPED'} ", end='', flush=True)
-                        else:
-                            print(f"\r🤖 STOPPED ", end='', flush=True)
-                            
+                        # Send stop after brief movement
+                        time.sleep(0.5)
+                        robot.send_action({'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0})
                     except Exception as e:
-                        print(f"\n❌ Command failed: {e}")
+                        print(f"❌ Command failed: {e}")
                         break
+            else:
+                # Real-time mode
+                print(f"\n[Speed: {speed_levels[current_speed_idx]:.1f}m/s] Ready! Use W/A/S/D keys...")
                 
-                # Periodic status update
-                if current_time - last_status_print > 2.0:  # Every 2 seconds
-                    try:
-                        obs = robot.get_observation()
-                        if any(abs(obs[k]) > 0.001 for k in ['x.vel', 'y.vel', 'theta.vel']):
-                            print(f"\n📊 Actual: x={obs['x.vel']:.2f}m/s, θ={obs['theta.vel']:.1f}°/s")
-                        last_status_print = current_time
-                    except:
-                        pass
-                
-                time.sleep(0.05)  # 20Hz control loop
+                while True:
+                    # Read any available key presses
+                    char = input_handler.get_char()
+                    if char:
+                        char = char.lower()
+                        if char == 'q':
+                            print("\nQuitting...")
+                            break
+                        elif char == ' ':  # Space for emergency stop
+                            pressed_keys.clear()
+                            print("\n🛑 Emergency stop!")
+                        elif char == 'r':
+                            current_speed_idx = min(current_speed_idx + 1, len(speed_levels) - 1)
+                            print(f"\n⚡ Speed: {speed_levels[current_speed_idx]:.1f}m/s")
+                        elif char == 'f':
+                            current_speed_idx = max(current_speed_idx - 1, 0)
+                            print(f"\n🐌 Speed: {speed_levels[current_speed_idx]:.1f}m/s")
+                        elif char in 'wasd':
+                            pressed_keys[char] = time.time()  # Record when key was pressed
+                    
+                    # Remove expired keys (simulate key release)
+                    current_time = time.time()
+                    expired_keys = [k for k, t in pressed_keys.items() if current_time - t > key_timeout]
+                    for k in expired_keys:
+                        del pressed_keys[k]
+                    
+                    # Calculate current action based on pressed keys
+                    action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
+                    
+                    if 'w' in pressed_keys:
+                        action['x.vel'] += speed_levels[current_speed_idx]
+                    if 's' in pressed_keys:
+                        action['x.vel'] -= speed_levels[current_speed_idx]
+                    if 'a' in pressed_keys:
+                        action['theta.vel'] += rotation_levels[current_speed_idx]
+                    if 'd' in pressed_keys:
+                        action['theta.vel'] -= rotation_levels[current_speed_idx]
+                    
+                    # Only send action if it changed
+                    if action != last_action:
+                        try:
+                            robot.send_action(action)
+                            last_action = action.copy()
+                            
+                            # Show movement status
+                            if any(abs(action[k]) > 0.001 for k in action):
+                                status = []
+                                if action['x.vel'] > 0: status.append("↑FWD")
+                                elif action['x.vel'] < 0: status.append("↓REV")
+                                if action['theta.vel'] > 0: status.append("↺LEFT")
+                                elif action['theta.vel'] < 0: status.append("↻RIGHT")
+                                print(f"\r🤖 {' '.join(status) if status else 'STOPPED'} ", end='', flush=True)
+                            else:
+                                print(f"\r🤖 STOPPED ", end='', flush=True)
+                                
+                        except Exception as e:
+                            print(f"\n❌ Command failed: {e}")
+                            break
+                    
+                    # Periodic status update
+                    if current_time - last_status_print > 2.0:  # Every 2 seconds
+                        try:
+                            obs = robot.get_observation()
+                            if any(abs(obs[k]) > 0.001 for k in ['x.vel', 'y.vel', 'theta.vel']):
+                                print(f"\n📊 Actual: x={obs['x.vel']:.2f}m/s, θ={obs['theta.vel']:.1f}°/s")
+                            last_status_print = current_time
+                        except:
+                            pass
+                    
+                    time.sleep(0.05)  # 20Hz control loop
     
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user")
