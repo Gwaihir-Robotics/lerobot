@@ -102,25 +102,26 @@ def main():
         print("Make sure the Mini Mapper host is running on the Pi")
         return
     
-    print("\n🎮 Mini Mapper Real-Time Teleoperation:")
-    print("  W/S - Forward/Backward (hold for continuous motion)")
-    print("  A/D - Rotate Left/Right (hold for continuous motion)")
-    print("  R/F - Increase/Decrease speed")
-    print("  Q   - Quit")
-    print("  SPACE - Emergency stop")
-    print("\n⚠️  Hold keys for continuous motion - no need to press Enter!")
-    print("Press any key to start...")
+    print("\n🎮 Mini Mapper Driving Mode Control:")
+    print("  W - Enter FORWARD driving mode")
+    print("  S - Enter REVERSE driving mode")
+    print("  A - Enter LEFT TURN mode") 
+    print("  D - Enter RIGHT TURN mode")
+    print("  + - Increase speed in current mode")
+    print("  - - Decrease speed in current mode")
+    print("  SPACE - STOP (exit all modes)")
+    print("  Q - Quit")
+    print("\nOnce in a driving mode, use +/- to control speed!")
     
     # Speed levels
-    speed_levels = [0.1, 0.2, 0.3, 0.5]  # m/s
-    rotation_levels = [30, 45, 60, 90]   # deg/s
-    current_speed_idx = 1  # Start at 0.2 m/s
+    speed_levels = [0.05, 0.1, 0.2, 0.3, 0.5]  # m/s
+    rotation_levels = [15, 30, 45, 60, 90]      # deg/s
+    current_speed_idx = 1  # Start at 0.1 m/s
     
-    # State tracking
-    pressed_keys = {}  # key -> timestamp when pressed
+    # Driving mode state
+    current_mode = "STOP"  # STOP, FORWARD, REVERSE, LEFT_TURN, RIGHT_TURN
     last_action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
     last_status_print = 0
-    key_timeout = 0.5  # Keys timeout after 0.5 seconds of no re-press
     
     try:
         with NonBlockingInput() as input_handler:
@@ -160,77 +161,79 @@ def main():
                         print(f"❌ Command failed: {e}")
                         break
             else:
-                # Real-time mode
-                print(f"\n[Speed: {speed_levels[current_speed_idx]:.1f}m/s] Ready! Use W/A/S/D keys...")
+                # Driving mode system  
+                print(f"\n[Mode: {current_mode}] [Speed: {speed_levels[current_speed_idx]:.2f}m/s] Ready!")
                 
                 while True:
                     # Read any available key presses
                     char = input_handler.get_char()
+                    mode_changed = False
+                    
                     if char:
                         char = char.lower()
                         if char == 'q':
                             print("\nQuitting...")
                             break
-                        elif char == ' ':  # Space for emergency stop
-                            pressed_keys.clear()
-                            print("\n🛑 Emergency stop!")
-                        elif char == 'r':
-                            current_speed_idx = min(current_speed_idx + 1, len(speed_levels) - 1)
-                            print(f"\n⚡ Speed: {speed_levels[current_speed_idx]:.1f}m/s")
-                        elif char == 'f':
-                            current_speed_idx = max(current_speed_idx - 1, 0)
-                            print(f"\n🐌 Speed: {speed_levels[current_speed_idx]:.1f}m/s")
-                        elif char in 'wasd':
-                            pressed_keys[char] = time.time()  # Record when key was pressed
+                        elif char == ' ':  # Space to stop
+                            current_mode = "STOP"
+                            mode_changed = True
+                            print(f"\n🛑 STOPPED")
+                        elif char == 'w':  # Forward mode
+                            current_mode = "FORWARD"
+                            mode_changed = True
+                            print(f"\n🚗 FORWARD mode at {speed_levels[current_speed_idx]:.2f}m/s")
+                        elif char == 's':  # Reverse mode  
+                            current_mode = "REVERSE"
+                            mode_changed = True
+                            print(f"\n🔄 REVERSE mode at {speed_levels[current_speed_idx]:.2f}m/s")
+                        elif char == 'a':  # Left turn mode
+                            current_mode = "LEFT_TURN" 
+                            mode_changed = True
+                            print(f"\n↺ LEFT TURN mode at {rotation_levels[current_speed_idx]:.0f}°/s")
+                        elif char == 'd':  # Right turn mode
+                            current_mode = "RIGHT_TURN"
+                            mode_changed = True
+                            print(f"\n↻ RIGHT TURN mode at {rotation_levels[current_speed_idx]:.0f}°/s")
+                        elif char in '+=':  # Increase speed
+                            if current_mode != "STOP":
+                                current_speed_idx = min(current_speed_idx + 1, len(speed_levels) - 1)
+                                mode_changed = True
+                                if current_mode in ["FORWARD", "REVERSE"]:
+                                    print(f"\n⚡ {current_mode} speed: {speed_levels[current_speed_idx]:.2f}m/s")
+                                else:
+                                    print(f"\n⚡ {current_mode} speed: {rotation_levels[current_speed_idx]:.0f}°/s")
+                        elif char in '-_':  # Decrease speed
+                            if current_mode != "STOP":
+                                current_speed_idx = max(current_speed_idx - 1, 0)
+                                mode_changed = True
+                                if current_mode in ["FORWARD", "REVERSE"]:
+                                    print(f"\n🐌 {current_mode} speed: {speed_levels[current_speed_idx]:.2f}m/s")
+                                else:
+                                    print(f"\n🐌 {current_mode} speed: {rotation_levels[current_speed_idx]:.0f}°/s")
                     
-                    # Remove expired keys (simulate key release)
-                    current_time = time.time()
-                    expired_keys = [k for k, t in pressed_keys.items() if current_time - t > key_timeout]
-                    for k in expired_keys:
-                        del pressed_keys[k]
-                    
-                    # Calculate current action based on pressed keys
+                    # Calculate action based on current driving mode
                     action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
                     
-                    if 'w' in pressed_keys:
-                        action['x.vel'] += speed_levels[current_speed_idx]
-                    if 's' in pressed_keys:
-                        action['x.vel'] -= speed_levels[current_speed_idx]
-                    if 'a' in pressed_keys:
-                        action['theta.vel'] += rotation_levels[current_speed_idx]
-                    if 'd' in pressed_keys:
-                        action['theta.vel'] -= rotation_levels[current_speed_idx]
+                    if current_mode == "FORWARD":
+                        action['x.vel'] = speed_levels[current_speed_idx]
+                    elif current_mode == "REVERSE":
+                        action['x.vel'] = -speed_levels[current_speed_idx]
+                    elif current_mode == "LEFT_TURN":
+                        action['theta.vel'] = rotation_levels[current_speed_idx]
+                    elif current_mode == "RIGHT_TURN":
+                        action['theta.vel'] = -rotation_levels[current_speed_idx]
+                    # STOP mode keeps all velocities at 0.0
                     
-                    # Only send action if it changed
-                    if action != last_action:
+                    # Send action if mode changed or periodically
+                    current_time = time.time()
+                    if mode_changed or action != last_action or (current_time - last_status_print > 0.1):
                         try:
                             robot.send_action(action)
                             last_action = action.copy()
-                            
-                            # Show movement status
-                            if any(abs(action[k]) > 0.001 for k in action):
-                                status = []
-                                if action['x.vel'] > 0: status.append("↑FWD")
-                                elif action['x.vel'] < 0: status.append("↓REV")
-                                if action['theta.vel'] > 0: status.append("↺LEFT")
-                                elif action['theta.vel'] < 0: status.append("↻RIGHT")
-                                print(f"\r🤖 {' '.join(status) if status else 'STOPPED'} ", end='', flush=True)
-                            else:
-                                print(f"\r🤖 STOPPED ", end='', flush=True)
-                                
+                            last_status_print = current_time
                         except Exception as e:
                             print(f"\n❌ Command failed: {e}")
                             break
-                    
-                    # Periodic status update
-                    if current_time - last_status_print > 2.0:  # Every 2 seconds
-                        try:
-                            obs = robot.get_observation()
-                            if any(abs(obs[k]) > 0.001 for k in ['x.vel', 'y.vel', 'theta.vel']):
-                                print(f"\n📊 Actual: x={obs['x.vel']:.2f}m/s, θ={obs['theta.vel']:.1f}°/s")
-                            last_status_print = current_time
-                        except:
-                            pass
                     
                     time.sleep(0.05)  # 20Hz control loop
     
