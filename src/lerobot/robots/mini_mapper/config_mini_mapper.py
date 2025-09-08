@@ -21,9 +21,16 @@ from ..config import RobotConfig
 
 
 def mini_mapper_cameras_config() -> dict[str, CameraConfig]:
-    # Camera disabled for now due to Pi camera FPS issues on Ubuntu
-    # Will re-enable once servo setup and basic movement are working
-    return {}
+    # Re-enabled with Pi camera compatible settings
+    return {
+        "front": OpenCVCameraConfig(
+            index_or_path="/dev/video24",  # Detected Pi camera device
+            fps=None,  # Let camera use its default FPS
+            width=640, 
+            height=480, 
+            rotation=Cv2Rotation.NO_ROTATION
+        ),
+    }
 
 
 @RobotConfig.register_subclass("mini_mapper")

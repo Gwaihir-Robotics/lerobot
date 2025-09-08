@@ -195,7 +195,7 @@ class MiniMapper(Robot):
         x: float,
         y: float,
         theta: float,
-        wheel_radius: float = 0.05,
+        wheel_radius: float = 0.03175,
         wheelbase: float = 0.112,
         max_raw: int = 3000,
     ) -> dict:
