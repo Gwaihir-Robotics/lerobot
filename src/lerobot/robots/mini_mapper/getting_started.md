@@ -234,7 +234,30 @@ robot.disconnect()
 
 ## Part 3: Test Basic Movement
 
-### 3.1 Test Differential Drive
+### 3.1 Understanding Mini Mapper Motion Commands
+
+The Mini Mapper uses differential drive with three velocity components:
+
+- **`x.vel`** (m/s): **Forward/backward motion**
+  - Positive values = forward movement
+  - Negative values = backward movement  
+  - Range: typically -0.5 to +0.5 m/s
+
+- **`y.vel`** (m/s): **Lateral motion** (ignored for differential drive)
+  - Always set to 0.0 for differential drive robots
+  - Differential drive cannot move sideways
+
+- **`theta.vel`** (deg/s): **Rotational motion** (turning)
+  - Positive values = counter-clockwise rotation (left turn)
+  - Negative values = clockwise rotation (right turn)
+  - Range: typically -90 to +90 deg/s
+
+**Examples:**
+- `{'x.vel': 0.2, 'y.vel': 0.0, 'theta.vel': 0.0}` = Move forward
+- `{'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 45.0}` = Turn left in place
+- `{'x.vel': 0.1, 'y.vel': 0.0, 'theta.vel': 30.0}` = Move forward while turning left
+
+### 3.2 Test Differential Drive
 
 ```bash
 # Test forward movement
@@ -255,15 +278,15 @@ robot.send_action(action)
 robot.disconnect()
 "
 
-# Test rotation
+# Test left rotation (counter-clockwise)
 python -c "
 from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
 config = MiniMapperConfig(id='mini_mapper_01')
 robot = MiniMapper(config)
 robot.connect()
 
-# Rotate left
-action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 30.0}
+# Rotate left (positive theta.vel)
+action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 45.0}
 robot.send_action(action)
 import time; time.sleep(2)
 
@@ -271,6 +294,26 @@ import time; time.sleep(2)
 action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
 robot.send_action(action)
 robot.disconnect()
+print('Robot should have turned left (counter-clockwise)')
+"
+
+# Test right rotation (clockwise)  
+python -c "
+from lerobot.robots.mini_mapper import MiniMapper, MiniMapperConfig
+config = MiniMapperConfig(id='mini_mapper_01')
+robot = MiniMapper(config)
+robot.connect()
+
+# Rotate right (negative theta.vel)
+action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': -45.0}
+robot.send_action(action)
+import time; time.sleep(2)
+
+# Stop
+action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
+robot.send_action(action)
+robot.disconnect()
+print('Robot should have turned right (clockwise)')
 "
 ```
 
