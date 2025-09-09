@@ -61,7 +61,7 @@ tmux send-keys -t $SESSION_NAME:6 'sleep 2' Enter
 tmux send-keys -t $SESSION_NAME:6 'ros2 service call /slam_toolbox/change_state lifecycle_msgs/srv/ChangeState "{transition: {id: 3}}"' Enter
 tmux send-keys -t $SESSION_NAME:6 'echo "SLAM toolbox activated! Map should appear in RViz."' Enter
 tmux send-keys -t $SESSION_NAME:6 'echo "Window will close in 5 seconds..."' Enter
-tmux send-keys -t $SESSION_NAME:6 'sleep 5 && tmux kill-window -t slam_activator' Enter
+tmux send-keys -t $SESSION_NAME:6 'sleep 5 && exit' Enter
 
 # Window 5: Control (ready but not started)
 tmux new-window -t $SESSION_NAME -n 'teleop'
