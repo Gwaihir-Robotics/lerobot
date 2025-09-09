@@ -24,7 +24,7 @@ def generate_launch_description():
         name='sllidar_node',
         output='screen',
         parameters=[{
-            'serial_port': '/dev/ttyUSB0',
+            'serial_port': '/dev/ttyACM0',
             'serial_baudrate': 256000,
             'frame_id': 'laser',
             'inverted': False,
