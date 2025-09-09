@@ -22,7 +22,7 @@ class MiniMapperBridge(Node):
         
         self.obs_socket = self.zmq_context.socket(zmq.PULL)
         self.obs_socket.connect("tcp://localhost:5556")
-        self.obs_socket.setsockopt(zmq.RCVTIMEO, 100)  # 100ms timeout
+        self.obs_socket.setsockopt(zmq.RCVTIMEO, 10)  # 10ms timeout - don't block the timer
         
         # ROS2 publishers/subscribers
         self.cmd_vel_sub = self.create_subscription(
@@ -60,17 +60,17 @@ class MiniMapperBridge(Node):
         obs = None
         msg_count = 0
         
-        # Drain the message queue to get the latest observation
+        # Drain the message queue to get the latest observation (non-blocking)
         try:
-            while True:
-                msg = self.obs_socket.recv_string()
-                obs = json.loads(msg)
-                msg_count += 1
-                if msg_count > 10:  # Prevent infinite loop
-                    break
-        except zmq.Again:
-            # No more messages, use the last one we got
-            pass
+            while msg_count < 5:  # Limit drain attempts
+                try:
+                    msg = self.obs_socket.recv_string(zmq.NOBLOCK)
+                    obs = json.loads(msg)
+                    msg_count += 1
+                except zmq.Again:
+                    break  # No more messages
+        except Exception as e:
+            self.get_logger().warn(f'ZMQ receive error: {e}')
         
         if obs is None:
             return  # No data received
