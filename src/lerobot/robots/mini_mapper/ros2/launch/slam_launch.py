@@ -10,7 +10,7 @@ def generate_launch_description():
     # Start Mini Mapper node
     mini_mapper_node = Node(
         package='mini_mapper_nav',
-        executable='mini_mapper_node.py',
+        executable='mini_mapper_node',
         name='mini_mapper_node',
         output='screen'
     )
