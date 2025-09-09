@@ -17,19 +17,13 @@ def generate_launch_description():
         output='screen'
     )
     
-    # Start C1 lidar (without RViz2)
+    # Start C1 lidar (using same config as working sllidar launch)
     lidar_node = Node(
         package='sllidar_ros2',
         executable='sllidar_node',
         name='sllidar_node',
-        output='screen',
-        parameters=[{
-            'serial_port': '/dev/ttyACM0',
-            'serial_baudrate': 256000,
-            'frame_id': 'laser',
-            'inverted': False,
-            'angle_compensate': True,
-        }]
+        output='screen'
+        # Use default parameters that work with the C1
     )
     
     # Start SLAM Toolbox
