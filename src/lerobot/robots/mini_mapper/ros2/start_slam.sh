@@ -40,16 +40,28 @@ tmux send-keys -t $SESSION_NAME:2 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && sou
 sleep 2  # Wait for robot host to start
 tmux send-keys -t $SESSION_NAME:2 'ros2 run mini_mapper_nav mini_mapper_bridge' Enter
 
-# Window 3: Robot Model
-tmux new-window -t $SESSION_NAME -n 'robot_model'
+# Window 3: Static Transform (base_link -> laser)
+tmux new-window -t $SESSION_NAME -n 'static_tf'
 tmux send-keys -t $SESSION_NAME:3 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && source install/setup.bash' Enter
-tmux send-keys -t $SESSION_NAME:3 'ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro install/mini_mapper_nav/share/mini_mapper_nav/urdf/mini_mapper.urdf.xacro)"' Enter
+tmux send-keys -t $SESSION_NAME:3 'ros2 run tf2_ros static_transform_publisher 0 0 0.05 0 0 0 base_link laser' Enter
 
 # Window 4: SLAM
 tmux new-window -t $SESSION_NAME -n 'slam'
 tmux send-keys -t $SESSION_NAME:4 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && source install/setup.bash' Enter
 sleep 3  # Wait for other components
 tmux send-keys -t $SESSION_NAME:4 'ros2 run slam_toolbox async_slam_toolbox_node --ros-args -p use_sim_time:=false -p odom_frame:=odom -p map_frame:=map -p base_frame:=base_link -p scan_topic:=/scan -p resolution:=0.05 -p max_laser_range:=12.0 -p minimum_travel_distance:=0.2 -p minimum_travel_heading:=0.17 --log-level debug' Enter
+
+# Window 6: SLAM Lifecycle Activation (auto-activates SLAM then closes)
+tmux new-window -t $SESSION_NAME -n 'slam_activator'
+tmux send-keys -t $SESSION_NAME:6 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && source install/setup.bash' Enter
+tmux send-keys -t $SESSION_NAME:6 'sleep 5' Enter  # Wait for SLAM node to start
+tmux send-keys -t $SESSION_NAME:6 'echo "Activating SLAM toolbox lifecycle..."' Enter
+tmux send-keys -t $SESSION_NAME:6 'ros2 service call /slam_toolbox/change_state lifecycle_msgs/srv/ChangeState "{transition: {id: 1}}"' Enter
+tmux send-keys -t $SESSION_NAME:6 'sleep 2' Enter
+tmux send-keys -t $SESSION_NAME:6 'ros2 service call /slam_toolbox/change_state lifecycle_msgs/srv/ChangeState "{transition: {id: 3}}"' Enter
+tmux send-keys -t $SESSION_NAME:6 'echo "SLAM toolbox activated! Map should appear in RViz."' Enter
+tmux send-keys -t $SESSION_NAME:6 'echo "Window will close in 5 seconds..."' Enter
+tmux send-keys -t $SESSION_NAME:6 'sleep 5 && tmux kill-window -t slam_activator' Enter
 
 # Window 5: Control (ready but not started)
 tmux new-window -t $SESSION_NAME -n 'teleop'
@@ -68,7 +80,8 @@ echo "  Ctrl+B + d      # Detach (keeps running)"
 echo ""
 echo "Windows:"
 echo "  0: lidar        1: robot_host    2: robot_bridge"
-echo "  3: robot_model  4: slam          5: teleop (ready)"
+echo "  3: static_tf    4: slam          5: teleop (ready)"
+echo "  6: slam_activator (auto-closes)"
 
 # Attach to session
 tmux attach-session -t $SESSION_NAME
