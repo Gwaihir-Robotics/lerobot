@@ -32,11 +32,13 @@ class MiniMapperBridge(Node):
         # TF broadcaster
         self.tf_broadcaster = TransformBroadcaster(self)
         
-        # Odometry state
+        # Odometry state - always start at origin for mapping
         self.x = 0.0
         self.y = 0.0 
         self.theta = 0.0
         self.last_time = self.get_clock().now()
+        
+        self.get_logger().info('Mini Mapper bridge initialized - odometry starts at origin (0,0,0)')
         
         # Timer for publishing odometry
         self.create_timer(0.05, self.publish_odometry)  # 20Hz
