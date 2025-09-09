@@ -138,24 +138,38 @@ else
     log_success "Updated sllidar_ros2 driver"
 fi
 
-# Build sllidar_ros2 (outside virtual environment to avoid conflicts)
+# Build sllidar_ros2 (force system Python to avoid virtual environment conflicts)
 log_info "🔨 Building sllidar_ros2 driver..."
 cd "$NAV_WS"
 
-# Temporarily deactivate virtual environment if active
+# Save current virtual environment if active
+SAVED_VIRTUAL_ENV=""
 if [ -n "$VIRTUAL_ENV" ]; then
-    log_info "Temporarily deactivating virtual environment for build..."
-    deactivate || true
+    log_info "Virtual environment detected: $VIRTUAL_ENV"
+    log_info "Using system Python for ROS2 build to avoid conflicts..."
+    SAVED_VIRTUAL_ENV="$VIRTUAL_ENV"
+    # Unset virtual environment variables
+    unset VIRTUAL_ENV
+    unset PYTHONHOME
+    # Remove virtual environment from PATH
+    export PATH=$(echo "$PATH" | sed "s|$SAVED_VIRTUAL_ENV/bin:||g")
 fi
 
-# Source ROS2 environment and build
+# Force use of system Python
+export PYTHON_EXECUTABLE=/usr/bin/python3
+export CMAKE_PREFIX_PATH="/opt/ros/$ROS_DISTRO"
+
+# Source ROS2 environment and build with system Python
 source /opt/ros/$ROS_DISTRO/setup.bash
-if colcon build --packages-select sllidar_ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release; then
+if colcon build --packages-select sllidar_ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3; then
     log_success "Built sllidar_ros2 driver successfully"
 else
     log_error "Failed to build sllidar_ros2 driver"
-    log_error "Please check the error messages above and try running manually:"
+    log_error "This is likely due to Python environment conflicts."
+    log_error ""
+    log_error "Try building manually outside the virtual environment:"
     log_error "  cd $NAV_WS"
+    log_error "  source /opt/ros/$ROS_DISTRO/setup.bash"
     log_error "  colcon build --packages-select sllidar_ros2"
     exit 1
 fi
@@ -196,8 +210,11 @@ fi
 # Build complete workspace
 log_info "🔨 Building complete navigation workspace..."
 cd "$NAV_WS"
+
+# Ensure we're still using system Python for the full build
+export PYTHON_EXECUTABLE=/usr/bin/python3
 source /opt/ros/$ROS_DISTRO/setup.bash
-if colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release; then
+if colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3; then
     log_success "Built complete navigation workspace"
 else
     log_error "Failed to build navigation workspace"
