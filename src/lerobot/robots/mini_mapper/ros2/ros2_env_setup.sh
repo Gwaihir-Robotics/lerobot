@@ -111,8 +111,8 @@ fi
 # Install Python dependencies for ROS2 build system
 log_info "🐍 Installing Python dependencies for ROS2 build..."
 # Install system-wide to avoid virtual environment conflicts
-sudo apt install -y python3-catkin-pkg python3-empy python3-lark
-log_success "Python dependencies installed"
+sudo apt install -y python3-catkin-pkg python3-empy python3-lark tmux
+log_success "Python dependencies and tmux installed"
 
 # Create ROS2 workspace
 log_info "🏗️  Creating ROS2 navigation workspace..."
