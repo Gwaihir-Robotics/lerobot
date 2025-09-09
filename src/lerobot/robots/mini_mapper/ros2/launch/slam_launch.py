@@ -22,8 +22,15 @@ def generate_launch_description():
         package='sllidar_ros2',
         executable='sllidar_node',
         name='sllidar_node',
-        output='screen'
-        # Use default parameters that work with the C1
+        output='screen',
+        parameters=[{
+            'channel_type': 'serial',
+            'serial_port': '/dev/ttyUSB0', 
+            'serial_baudrate': 256000,
+            'frame_id': 'laser',
+            'inverted': False,
+            'angle_compensate': True,
+        }]
     )
     
     # Start SLAM Toolbox
@@ -34,14 +41,14 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'use_sim_time': False,
-            'slam_toolbox.odom_frame': 'odom',
-            'slam_toolbox.map_frame': 'map',
-            'slam_toolbox.base_frame': 'base_link',
-            'slam_toolbox.scan_topic': '/scan',
-            'slam_toolbox.resolution': 0.05,
-            'slam_toolbox.max_laser_range': 12.0,
-            'slam_toolbox.minimum_travel_distance': 0.2,
-            'slam_toolbox.minimum_travel_heading': 0.17,  # ~10 degrees
+            'odom_frame': 'odom',
+            'map_frame': 'map',
+            'base_frame': 'base_link',
+            'scan_topic': '/scan',
+            'resolution': 0.05,
+            'max_laser_range': 12.0,
+            'minimum_travel_distance': 0.2,
+            'minimum_travel_heading': 0.17,  # ~10 degrees
         }]
     )
     
