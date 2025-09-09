@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="mini_mapper">
+  
+  <!-- Robot dimensions -->
+  <xacro:property name="robot_length" value="0.248"/>
+  <xacro:property name="robot_width" value="0.248"/> 
+  <xacro:property name="robot_height" value="0.130"/>
+  <xacro:property name="wheel_radius" value="0.03175"/>
+  <xacro:property name="wheelbase" value="0.112"/>
+  
+  <!-- Base link (robot center) -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="${robot_length} ${robot_width} ${robot_height}"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${robot_length} ${robot_width} ${robot_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.0"/>
+      <inertia ixx="0.02" ixy="0" ixz="0" iyy="0.02" iyz="0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <!-- Left wheel -->
+  <link name="left_wheel">
+    <visual>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="0.02"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+  </link>
+  
+  <!-- Right wheel --> 
+  <link name="right_wheel">
+    <visual>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="0.02"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- Lidar link -->
+  <link name="laser">
+    <visual>
+      <geometry>
+        <cylinder radius="0.05" length="0.07"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- Joints -->
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="left_wheel"/>
+    <origin xyz="0 ${wheelbase/2} -${robot_height/2}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="right_wheel"/>
+    <origin xyz="0 -${wheelbase/2} -${robot_height/2}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser"/>
+    <origin xyz="0 0 ${robot_height/2 + 0.10}" rpy="0 0 0"/>
+  </joint>
+
+</robot>
