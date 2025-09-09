@@ -142,36 +142,64 @@ fi
 log_info "🔨 Building sllidar_ros2 driver..."
 cd "$NAV_WS"
 
-# Save current virtual environment if active
-SAVED_VIRTUAL_ENV=""
+# Handle virtual environment conflicts by completely isolating the build environment
 if [ -n "$VIRTUAL_ENV" ]; then
     log_info "Virtual environment detected: $VIRTUAL_ENV"
-    log_info "Using system Python for ROS2 build to avoid conflicts..."
-    SAVED_VIRTUAL_ENV="$VIRTUAL_ENV"
-    # Unset virtual environment variables
-    unset VIRTUAL_ENV
-    unset PYTHONHOME
-    # Remove virtual environment from PATH
-    export PATH=$(echo "$PATH" | sed "s|$SAVED_VIRTUAL_ENV/bin:||g")
-fi
+    log_info "Running build in isolated shell to avoid Python conflicts..."
+    
+    # Create a clean build script that runs outside the virtual environment
+    cat > /tmp/build_sllidar.sh << 'EOF'
+#!/bin/bash
+set -e
 
-# Force use of system Python
+# Clean environment - remove all virtual env traces
+unset VIRTUAL_ENV
+unset PYTHONHOME
+unset PYTHONPATH
+
+# Reset PATH to system defaults
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Force system Python
 export PYTHON_EXECUTABLE=/usr/bin/python3
-export CMAKE_PREFIX_PATH="/opt/ros/$ROS_DISTRO"
 
-# Source ROS2 environment and build with system Python
-source /opt/ros/$ROS_DISTRO/setup.bash
-if colcon build --packages-select sllidar_ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3; then
-    log_success "Built sllidar_ros2 driver successfully"
+# Source ROS2 and build
+source /opt/ros/kilted/setup.bash
+cd "$1"
+colcon build --packages-select sllidar_ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3
+EOF
+    
+    chmod +x /tmp/build_sllidar.sh
+    
+    # Run the build script in a clean environment
+    if /tmp/build_sllidar.sh "$NAV_WS"; then
+        log_success "Built sllidar_ros2 driver successfully"
+        rm -f /tmp/build_sllidar.sh
+    else
+        log_error "Failed to build sllidar_ros2 driver"
+        rm -f /tmp/build_sllidar.sh
+        log_error "Virtual environment conflicts are preventing the build."
+        log_error ""
+        log_error "Manual workaround:"
+        log_error "1. Exit this script (Ctrl+C)"
+        log_error "2. Deactivate virtual environment: deactivate"
+        log_error "3. Run build manually:"
+        log_error "   cd $NAV_WS"
+        log_error "   source /opt/ros/kilted/setup.bash" 
+        log_error "   colcon build --packages-select sllidar_ros2"
+        log_error "4. Re-run this script to continue setup"
+        exit 1
+    fi
 else
-    log_error "Failed to build sllidar_ros2 driver"
-    log_error "This is likely due to Python environment conflicts."
-    log_error ""
-    log_error "Try building manually outside the virtual environment:"
-    log_error "  cd $NAV_WS"
-    log_error "  source /opt/ros/$ROS_DISTRO/setup.bash"
-    log_error "  colcon build --packages-select sllidar_ros2"
-    exit 1
+    # No virtual environment, build normally
+    export PYTHON_EXECUTABLE=/usr/bin/python3
+    source /opt/ros/$ROS_DISTRO/setup.bash
+    if colcon build --packages-select sllidar_ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3; then
+        log_success "Built sllidar_ros2 driver successfully"
+    else
+        log_error "Failed to build sllidar_ros2 driver"
+        exit 1
+    fi
 fi
 
 # Configure USB permissions for C1
@@ -211,14 +239,53 @@ fi
 log_info "🔨 Building complete navigation workspace..."
 cd "$NAV_WS"
 
-# Ensure we're still using system Python for the full build
+# Use the same isolated approach for the full workspace build
+if [ -n "$VIRTUAL_ENV" ]; then
+    log_info "Building complete workspace in isolated environment..."
+    
+    # Create a clean build script for the full workspace
+    cat > /tmp/build_workspace.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Clean environment - remove all virtual env traces
+unset VIRTUAL_ENV
+unset PYTHONHOME
+unset PYTHONPATH
+
+# Reset PATH to system defaults
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Force system Python
 export PYTHON_EXECUTABLE=/usr/bin/python3
-source /opt/ros/$ROS_DISTRO/setup.bash
-if colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3; then
-    log_success "Built complete navigation workspace"
+
+# Source ROS2 and build
+source /opt/ros/kilted/setup.bash
+cd "$1"
+colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3
+EOF
+    
+    chmod +x /tmp/build_workspace.sh
+    
+    # Run the build script in a clean environment
+    if /tmp/build_workspace.sh "$NAV_WS"; then
+        log_success "Built complete navigation workspace"
+        rm -f /tmp/build_workspace.sh
+    else
+        log_error "Failed to build navigation workspace"
+        rm -f /tmp/build_workspace.sh
+        exit 1
+    fi
 else
-    log_error "Failed to build navigation workspace"
-    exit 1
+    # No virtual environment, build normally
+    export PYTHON_EXECUTABLE=/usr/bin/python3
+    source /opt/ros/$ROS_DISTRO/setup.bash
+    if colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3; then
+        log_success "Built complete navigation workspace"
+    else
+        log_error "Failed to build navigation workspace"
+        exit 1
+    fi
 fi
 
 # Setup environment sourcing (avoid duplicates)
