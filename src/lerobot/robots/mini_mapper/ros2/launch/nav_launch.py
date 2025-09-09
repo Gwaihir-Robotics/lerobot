@@ -32,12 +32,18 @@ def generate_launch_description():
     )
     
     # Robot state publisher
+    urdf_file = os.path.join(
+        get_package_share_directory('mini_mapper_nav'),
+        'urdf',
+        'mini_mapper.urdf.xacro'
+    )
+    
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         name='robot_state_publisher',
         output='screen',
-        parameters=[{'robot_description': open('urdf/mini_mapper.urdf.xacro').read()}]
+        parameters=[{'robot_description': open(urdf_file).read()}]
     )
     
     # Map server
