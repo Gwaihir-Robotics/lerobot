@@ -3,6 +3,8 @@ from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
+from launch_ros.parameter_descriptions import ParameterValue
+from launch.substitutions import Command
 import os
 
 def generate_launch_description():
@@ -42,7 +44,7 @@ def generate_launch_description():
         }]
     )
     
-    # Robot state publisher
+    # Robot state publisher with xacro processing
     urdf_file = os.path.join(
         get_package_share_directory('mini_mapper_nav'),
         'urdf',
@@ -54,11 +56,16 @@ def generate_launch_description():
         executable='robot_state_publisher',
         name='robot_state_publisher',
         output='screen',
-        parameters=[{'robot_description': open(urdf_file).read()}]
+        parameters=[{
+            'robot_description': ParameterValue(
+                Command(['xacro ', urdf_file]),
+                value_type=str
+            )
+        }]
     )
     
     return LaunchDescription([
-        mini_mapper_node,
+        # mini_mapper_node,  # Comment out until we fix the lerobot import issue
         lidar_launch,
         robot_state_publisher,
         slam_node,
