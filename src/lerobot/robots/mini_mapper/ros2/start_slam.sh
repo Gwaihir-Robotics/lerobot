@@ -51,21 +51,20 @@ tmux send-keys -t $SESSION_NAME:4 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && sou
 sleep 3  # Wait for other components
 tmux send-keys -t $SESSION_NAME:4 'ros2 run slam_toolbox async_slam_toolbox_node --ros-args -p use_sim_time:=false -p odom_frame:=odom -p map_frame:=map -p base_frame:=base_link -p scan_topic:=/scan -p resolution:=0.05 -p max_laser_range:=12.0 -p minimum_travel_distance:=0.2 -p minimum_travel_heading:=0.17 --log-level debug' Enter
 
-# Window 6: SLAM Lifecycle Activation (auto-activates SLAM then closes)
-tmux new-window -t $SESSION_NAME -n 'slam_activator'
+# Window 5: Control (ready but not started)
+tmux new-window -t $SESSION_NAME -n 'teleop'
+tmux send-keys -t $SESSION_NAME:5 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && source install/setup.bash' Enter
+tmux send-keys -t $SESSION_NAME:5 '# Run: ros2 run teleop_twist_keyboard teleop_twist_keyboard' Enter
+
+# Window 6: Debug/Testing (activates SLAM then stays open for testing)
+tmux new-window -t $SESSION_NAME -n 'debug'
 tmux send-keys -t $SESSION_NAME:6 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && source install/setup.bash' Enter
 tmux send-keys -t $SESSION_NAME:6 'sleep 5' Enter  # Wait for SLAM node to start
 tmux send-keys -t $SESSION_NAME:6 'echo "Activating SLAM toolbox lifecycle..."' Enter
 tmux send-keys -t $SESSION_NAME:6 'ros2 service call /slam_toolbox/change_state lifecycle_msgs/srv/ChangeState "{transition: {id: 1}}"' Enter
 tmux send-keys -t $SESSION_NAME:6 'sleep 2' Enter
 tmux send-keys -t $SESSION_NAME:6 'ros2 service call /slam_toolbox/change_state lifecycle_msgs/srv/ChangeState "{transition: {id: 3}}"' Enter
-tmux send-keys -t $SESSION_NAME:6 'echo "SLAM toolbox activated! Map should appear in RViz."' Enter
-tmux send-keys -t $SESSION_NAME:6 'echo "Window will close in 5 seconds..."' Enter
-tmux send-keys -t $SESSION_NAME:6 'sleep 5 && exit' Enter
-
-# Window 5: Control (ready but not started)
-tmux new-window -t $SESSION_NAME -n 'teleop'
-tmux send-keys -t $SESSION_NAME:5 'cd ~/nav_ws && export ROS_DOMAIN_ID=42 && source install/setup.bash' Enter
+tmux send-keys -t $SESSION_NAME:6 'echo "SLAM toolbox activated! Ready for debugging."' Enter
 tmux send-keys -t $SESSION_NAME:5 '# Run: ros2 run teleop_twist_keyboard teleop_twist_keyboard' Enter
 
 log_success "Mini Mapper SLAM system started!"
@@ -81,7 +80,7 @@ echo ""
 echo "Windows:"
 echo "  0: lidar        1: robot_host    2: robot_bridge"
 echo "  3: static_tf    4: slam          5: teleop (ready)"
-echo "  6: slam_activator (auto-closes)"
+echo "  6: debug (testing terminal)"
 
 # Attach to session
 tmux attach-session -t $SESSION_NAME
