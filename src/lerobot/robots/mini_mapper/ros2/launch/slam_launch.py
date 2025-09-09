@@ -17,12 +17,19 @@ def generate_launch_description():
         output='screen'
     )
     
-    # Start C1 lidar
-    lidar_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            get_package_share_directory('sllidar_ros2'),
-            '/launch/view_sllidar_c1_launch.py'
-        ])
+    # Start C1 lidar (without RViz2)
+    lidar_node = Node(
+        package='sllidar_ros2',
+        executable='sllidar_node',
+        name='sllidar_node',
+        output='screen',
+        parameters=[{
+            'serial_port': '/dev/ttyUSB0',
+            'serial_baudrate': 256000,
+            'frame_id': 'laser',
+            'inverted': False,
+            'angle_compensate': True,
+        }]
     )
     
     # Start SLAM Toolbox
@@ -66,7 +73,7 @@ def generate_launch_description():
     
     return LaunchDescription([
         # mini_mapper_node,  # Comment out until we fix the lerobot import issue
-        lidar_launch,
+        lidar_node,
         robot_state_publisher,
         slam_node,
     ])
