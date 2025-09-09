@@ -36,7 +36,7 @@ LEROBOT_ROOT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
 NAV_WS="$HOME/nav_ws"
 ROS_DISTRO="kilted"
 
-log_info "> Mini Mapper ROS2 Environment Setup"
+log_info "ü§ñ Mini Mapper ROS2 Environment Setup"
 log_info "====================================="
 log_info "Script location: $SCRIPT_DIR"
 log_info "LeRobot root: $LEROBOT_ROOT"
@@ -45,7 +45,7 @@ log_info "ROS2 distribution: $ROS_DISTRO"
 echo ""
 
 # Check if running on Raspberry Pi
-log_info "=À Checking system requirements..."
+log_info "üìã Checking system requirements..."
 if ! command -v lsb_release &> /dev/null; then
     log_error "lsb_release not found. Please ensure you're running Ubuntu 22.04"
     exit 1
@@ -76,7 +76,7 @@ check_ros_package() {
 }
 
 # Install ROS2 Navigation Packages
-log_info "=Ê Installing ROS2 navigation packages..."
+log_info "üì¶ Installing ROS2 navigation packages..."
 NAV_PACKAGES=(
     "ros-$ROS_DISTRO-navigation2"
     "ros-$ROS_DISTRO-nav2-bringup"
@@ -108,8 +108,14 @@ else
     log_success "All navigation packages already installed"
 fi
 
+# Install Python dependencies for ROS2 build system
+log_info "üêç Installing Python dependencies for ROS2 build..."
+# Install system-wide to avoid virtual environment conflicts
+sudo apt install -y python3-catkin-pkg python3-empy python3-lark
+log_success "Python dependencies installed"
+
 # Create ROS2 workspace
-log_info "<◊  Creating ROS2 navigation workspace..."
+log_info "üèóÔ∏è  Creating ROS2 navigation workspace..."
 if [ ! -d "$NAV_WS" ]; then
     mkdir -p "$NAV_WS/src"
     log_success "Created navigation workspace: $NAV_WS"
@@ -118,7 +124,7 @@ else
 fi
 
 # Clone Slamtech C1 driver
-log_info "=· Setting up Slamtech C1 lidar driver..."
+log_info "üì° Setting up Slamtech C1 lidar driver..."
 SLLIDAR_PATH="$NAV_WS/src/sllidar_ros2"
 if [ ! -d "$SLLIDAR_PATH" ]; then
     log_info "Cloning sllidar_ros2 repository..."
@@ -132,18 +138,30 @@ else
     log_success "Updated sllidar_ros2 driver"
 fi
 
-# Build sllidar_ros2
-log_info "=( Building sllidar_ros2 driver..."
+# Build sllidar_ros2 (outside virtual environment to avoid conflicts)
+log_info "üî® Building sllidar_ros2 driver..."
 cd "$NAV_WS"
+
+# Temporarily deactivate virtual environment if active
+if [ -n "$VIRTUAL_ENV" ]; then
+    log_info "Temporarily deactivating virtual environment for build..."
+    deactivate || true
+fi
+
+# Source ROS2 environment and build
+source /opt/ros/$ROS_DISTRO/setup.bash
 if colcon build --packages-select sllidar_ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release; then
     log_success "Built sllidar_ros2 driver successfully"
 else
     log_error "Failed to build sllidar_ros2 driver"
+    log_error "Please check the error messages above and try running manually:"
+    log_error "  cd $NAV_WS"
+    log_error "  colcon build --packages-select sllidar_ros2"
     exit 1
 fi
 
 # Configure USB permissions for C1
-log_info "= Configuring USB permissions for Slamtech C1..."
+log_info "üîå Configuring USB permissions for Slamtech C1..."
 if ! groups | grep -q dialout; then
     log_info "Adding user to dialout group..."
     sudo usermod -a -G dialout $USER
@@ -165,7 +183,7 @@ else
 fi
 
 # Deploy Mini Mapper navigation package
-log_info "=Ä Deploying Mini Mapper navigation package..."
+log_info "üöÄ Deploying Mini Mapper navigation package..."
 cd "$SCRIPT_DIR"
 if [ -f "./deploy_ros2_package.sh" ]; then
     ./deploy_ros2_package.sh
@@ -176,8 +194,9 @@ else
 fi
 
 # Build complete workspace
-log_info "=( Building complete navigation workspace..."
+log_info "üî® Building complete navigation workspace..."
 cd "$NAV_WS"
+source /opt/ros/$ROS_DISTRO/setup.bash
 if colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release; then
     log_success "Built complete navigation workspace"
 else
@@ -186,7 +205,7 @@ else
 fi
 
 # Setup environment sourcing (avoid duplicates)
-log_info "ô  Configuring environment setup..."
+log_info "‚öôÔ∏è  Configuring environment setup..."
 BASHRC_LINE="source $NAV_WS/install/setup.bash"
 if ! grep -qF "$BASHRC_LINE" ~/.bashrc; then
     log_info "Adding workspace sourcing to ~/.bashrc..."
@@ -201,7 +220,7 @@ fi
 source "$NAV_WS/install/setup.bash"
 
 # Test the installation
-log_info ">Í Testing installation..."
+log_info "üß™ Testing installation..."
 
 # Check if mini_mapper_nav package is available
 if ros2 pkg list | grep -q mini_mapper_nav; then
@@ -220,7 +239,7 @@ else
 fi
 
 # Test C1 connection (if hardware is connected)
-log_info "= Checking for Slamtech C1 hardware..."
+log_info "üîç Checking for Slamtech C1 hardware..."
 if lsusb | grep -i "10c4:ea60\|Silicon Labs\|CP210"; then
     log_success "Slamtech C1 lidar detected (or compatible USB-Serial device)"
     
@@ -242,7 +261,7 @@ fi
 
 # Final success message
 echo ""
-log_success "<â Mini Mapper ROS2 environment setup complete!"
+log_success "üéâ Mini Mapper ROS2 environment setup complete!"
 echo ""
 echo "Next steps:"
 echo "1. Connect your Slamtech C1 lidar via USB"
@@ -259,7 +278,7 @@ echo ""
 echo "5. Save your map:"
 echo "   ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map"
 echo ""
-echo "=⁄ Full documentation: $LEROBOT_ROOT/src/lerobot/robots/mini_mapper/lidar_navigation_setup.md"
+echo "üìö Full documentation: $LEROBOT_ROOT/src/lerobot/robots/mini_mapper/lidar_navigation_setup.md"
 echo ""
 
 if groups | grep -q dialout; then
