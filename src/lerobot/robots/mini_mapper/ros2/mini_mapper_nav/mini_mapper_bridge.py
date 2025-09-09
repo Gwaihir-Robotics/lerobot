@@ -16,11 +16,11 @@ class MiniMapperBridge(Node):
         super().__init__('mini_mapper_bridge')
         
         # ZMQ connection to Mini Mapper host
-        self.context = zmq.Context()
-        self.cmd_socket = self.context.socket(zmq.PUSH)
+        self.zmq_context = zmq.Context()
+        self.cmd_socket = self.zmq_context.socket(zmq.PUSH)
         self.cmd_socket.connect("tcp://localhost:5555")
         
-        self.obs_socket = self.context.socket(zmq.PULL)
+        self.obs_socket = self.zmq_context.socket(zmq.PULL)
         self.obs_socket.connect("tcp://localhost:5556")
         self.obs_socket.setsockopt(zmq.RCVTIMEO, 100)  # 100ms timeout
         
@@ -115,7 +115,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.context.term()
+        node.zmq_context.term()
         node.destroy_node()
         rclpy.shutdown()
 

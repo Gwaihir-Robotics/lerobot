@@ -108,11 +108,35 @@ else
     log_success "All navigation packages already installed"
 fi
 
-# Install Python dependencies for ROS2 build system
-log_info "🐍 Installing Python dependencies for ROS2 build..."
+# Install Python dependencies for ROS2 build system and Mini Mapper bridge
+log_info "🐍 Installing Python dependencies for ROS2 build and Mini Mapper bridge..."
 # Install system-wide to avoid virtual environment conflicts
-sudo apt install -y python3-catkin-pkg python3-empy python3-lark tmux
-log_success "Python dependencies and tmux installed"
+PYTHON_DEPS=(
+    "python3-catkin-pkg"   # ROS2 build system
+    "python3-empy"         # ROS2 build system  
+    "python3-lark"         # ROS2 build system
+    "python3-zmq"          # Mini Mapper bridge ZMQ communication
+    "python3-numpy"        # Common scientific computing
+    "python3-opencv"       # Computer vision (if cameras used)
+    "tmux"                 # Process management
+    "curl"                 # General utilities
+    "wget"                 # General utilities
+)
+
+MISSING_PYTHON_DEPS=()
+for package in "${PYTHON_DEPS[@]}"; do
+    if ! dpkg -l | grep -q "^ii  $package "; then
+        MISSING_PYTHON_DEPS+=("$package")
+    fi
+done
+
+if [ ${#MISSING_PYTHON_DEPS[@]} -gt 0 ]; then
+    log_info "Installing missing Python dependencies: ${MISSING_PYTHON_DEPS[*]}"
+    sudo apt install -y "${MISSING_PYTHON_DEPS[@]}"
+    log_success "Python dependencies installed"
+else
+    log_success "All Python dependencies already installed"
+fi
 
 # Create ROS2 workspace
 log_info "🏗️  Creating ROS2 navigation workspace..."
