@@ -26,7 +26,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mini_mapper_node = mini_mapper_nav.mini_mapper_node:main'
+            'mini_mapper_node = mini_mapper_nav.mini_mapper_node:main',
+            'mini_mapper_bridge = mini_mapper_nav.mini_mapper_bridge:main'
         ],
     },
 )
