@@ -40,7 +40,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='static_transform_publisher',
-        arguments=['0', '0', '0.05', '0', '0', '0', 'base_link', 'laser']
+        arguments=['0', '0', '0.05', '3.14159', '0', '0', 'base_link', 'laser']  # 180° rotation
     )
     
     # Robot state publisher with Mini Mapper URDF
