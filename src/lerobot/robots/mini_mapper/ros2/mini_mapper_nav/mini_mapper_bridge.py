@@ -87,7 +87,7 @@ class MiniMapperBridge(Node):
             
             self.x += dx * math.cos(self.theta)
             self.y += dx * math.sin(self.theta)
-            self.theta += dtheta
+            self.theta -= dtheta  # Fix: Mini Mapper theta.vel is opposite to ROS convention
             
             # Debug logging (remove later)
             if msg_count > 1:
