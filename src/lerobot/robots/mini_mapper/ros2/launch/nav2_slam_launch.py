@@ -99,12 +99,10 @@ def generate_launch_description():
         declare_slam_params_file_cmd,
         declare_use_sim_time_cmd,
         
-        # Start immediately
+        # Start immediately - basic transforms and hardware
         static_transform_publisher,
         robot_state_publisher,
-        
-        # Start lidar first, wait for it to initialize
-        lidar_node,
+        lidar_node,  # Start lidar immediately, no timer
         
         # Start bridge after lidar has time to connect (2 second delay)
         TimerAction(
@@ -112,7 +110,7 @@ def generate_launch_description():
             actions=[mini_mapper_bridge]
         ),
         
-        # Start SLAM after bridge is ready (3 second delay)
+        # Start SLAM after bridge is ready (3 second delay)  
         TimerAction(
             period=3.0,
             actions=[slam_launch]
