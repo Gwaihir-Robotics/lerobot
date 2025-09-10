@@ -35,7 +35,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'channel_type': 'serial',
-            'serial_port': '/dev/ttyUSB0', 
+            'serial_port': '/dev/ttyACM0',  # Changed from ttyUSB0 to ttyACM0
             'serial_baudrate': 256000,
             'frame_id': 'laser',
             'inverted': False,
