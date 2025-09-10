@@ -38,6 +38,10 @@ class MiniMapperBridge(Node):
         self.theta = 0.0
         self.last_time = self.get_clock().now()
         
+        # Odometry calibration factors (adjust based on real-world testing)
+        self.linear_scale = 1.0   # Adjust if distances are wrong
+        self.angular_scale = 1.0  # Adjust if rotations are wrong
+        
         self.get_logger().info('Mini Mapper bridge initialized - odometry starts at origin (0,0,0)')
         
         # Timer for publishing odometry
@@ -82,8 +86,8 @@ class MiniMapperBridge(Node):
         # Update odometry based on velocities
         dt = (current_time - self.last_time).nanoseconds / 1e9
         if dt > 0 and dt < 1.0:  # Sanity check - reject huge dt values
-            dx = obs.get('x.vel', 0.0) * dt
-            dtheta = math.radians(obs.get('theta.vel', 0.0)) * dt
+            dx = obs.get('x.vel', 0.0) * dt * self.linear_scale
+            dtheta = math.radians(obs.get('theta.vel', 0.0)) * dt * self.angular_scale
             
             self.x += dx * math.cos(self.theta)
             self.y += dx * math.sin(self.theta)
