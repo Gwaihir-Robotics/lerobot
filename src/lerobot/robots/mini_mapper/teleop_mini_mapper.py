@@ -26,6 +26,7 @@ import sys
 import time
 import termios
 import tty
+import math
 from lerobot.robots.mini_mapper import MiniMapperClient, MiniMapperClientConfig
 
 
@@ -59,6 +60,47 @@ class NonBlockingInput:
         except (ImportError, OSError):
             pass
         return None
+
+
+def calibration_move_forward(robot, distance):
+    """Drive forward exactly 'distance' meters"""
+    print(f"🎯 Calibration: Driving {distance}m forward...")
+    
+    cal_speed = 0.15  # Slower for accuracy
+    move_time = distance / cal_speed
+    
+    # Start moving
+    action = {'x.vel': cal_speed, 'y.vel': 0.0, 'theta.vel': 0.0}
+    robot.send_action(action)
+    
+    # Wait for calculated time
+    time.sleep(move_time)
+    
+    # Stop
+    stop_action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
+    robot.send_action(stop_action)
+    print(f"✅ Calibration complete: {distance}m forward movement finished")
+
+
+def calibration_rotate(robot, degrees):
+    """Rotate exactly 'degrees' clockwise (negative for counter-clockwise)"""
+    print(f"🎯 Calibration: Rotating {degrees}° clockwise...")
+    
+    cal_angular_speed = 20.0  # deg/s - slower for accuracy
+    move_time = abs(degrees) / cal_angular_speed
+    angular_vel = -cal_angular_speed if degrees > 0 else cal_angular_speed  # Clockwise is negative
+    
+    # Start rotating
+    action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': angular_vel}
+    robot.send_action(action)
+    
+    # Wait for calculated time
+    time.sleep(move_time)
+    
+    # Stop
+    stop_action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
+    robot.send_action(stop_action)
+    print(f"✅ Calibration complete: {degrees}° rotation finished")
 
 
 def main():
@@ -111,6 +153,11 @@ def main():
     print("  - - Decrease speed in current mode")
     print("  SPACE - STOP (exit all modes)")
     print("  Q - Quit")
+    print("\n🎯 Calibration Hotkeys:")
+    print("  1 - Drive 1 meter forward (calibration)")
+    print("  2 - Rotate 360° clockwise (calibration)")
+    print("  3 - Drive 0.5 meter forward (short test)")
+    print("  4 - Rotate 180° clockwise (half turn)")
     print("\nOnce in a driving mode, use +/- to control speed!")
     
     # Speed levels
@@ -148,6 +195,18 @@ def main():
                     elif cmd == 'f':
                         current_speed_idx = max(current_speed_idx - 1, 0)
                         print(f"🐌 Speed: {speed_levels[current_speed_idx]:.1f}m/s")
+                        continue
+                    elif cmd == '1':
+                        calibration_move_forward(robot, 1.0)
+                        continue
+                    elif cmd == '2':
+                        calibration_rotate(robot, 360)
+                        continue
+                    elif cmd == '3':
+                        calibration_move_forward(robot, 0.5)
+                        continue
+                    elif cmd == '4':
+                        calibration_rotate(robot, 180)
                         continue
                     else:
                         action = {'x.vel': 0.0, 'y.vel': 0.0, 'theta.vel': 0.0}
@@ -194,6 +253,26 @@ def main():
                             current_mode = "RIGHT_TURN"
                             mode_changed = True
                             print(f"\n↻ RIGHT TURN mode at {rotation_levels[current_speed_idx]:.0f}°/s")
+                        elif char == '1':  # Calibration: 1 meter forward
+                            print(f"\n🎯 Starting calibration: 1 meter forward...")
+                            calibration_move_forward(robot, 1.0)
+                            current_mode = "STOP"
+                            mode_changed = True
+                        elif char == '2':  # Calibration: 360° rotation
+                            print(f"\n🎯 Starting calibration: 360° rotation...")
+                            calibration_rotate(robot, 360)
+                            current_mode = "STOP"
+                            mode_changed = True
+                        elif char == '3':  # Calibration: 0.5 meter forward
+                            print(f"\n🎯 Starting calibration: 0.5 meter forward...")
+                            calibration_move_forward(robot, 0.5)
+                            current_mode = "STOP"
+                            mode_changed = True
+                        elif char == '4':  # Calibration: 180° rotation
+                            print(f"\n🎯 Starting calibration: 180° rotation...")
+                            calibration_rotate(robot, 180)
+                            current_mode = "STOP"
+                            mode_changed = True
                         elif char in '+=':  # Increase speed
                             if current_mode != "STOP":
                                 current_speed_idx = min(current_speed_idx + 1, len(speed_levels) - 1)
