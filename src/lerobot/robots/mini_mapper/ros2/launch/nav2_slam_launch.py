@@ -27,20 +27,12 @@ def generate_launch_description():
         default_value='false',
         description='Use simulation (Gazebo) clock if true')
 
-    # Start Mini Mapper lidar
-    lidar_node = Node(
-        package='sllidar_ros2',
-        executable='sllidar_node',
-        name='sllidar_node',
-        output='screen',
-        parameters=[{
-            'channel_type': 'serial',
-            'serial_port': '/dev/ttyUSB0',  # Back to working port
-            'serial_baudrate': 256000,
-            'frame_id': 'laser',
-            'inverted': False,
-            'angle_compensate': True,
-        }]
+    # Start Mini Mapper lidar using the official Slamtech launch (known working)
+    lidar_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            get_package_share_directory('sllidar_ros2'),
+            '/launch/view_sllidar_c1_launch.py'
+        ])
     )
     
     # Static transform from base_link to laser
@@ -102,7 +94,7 @@ def generate_launch_description():
         # Start immediately - basic transforms and hardware
         static_transform_publisher,
         robot_state_publisher,
-        lidar_node,  # Start lidar immediately, no timer
+        lidar_launch,  # Use official Slamtech launch (working)
         
         # Start bridge after lidar has time to connect (2 second delay)
         TimerAction(
