@@ -82,12 +82,12 @@ class MiniMapperBridge(Node):
         # Update odometry based on velocities
         dt = (current_time - self.last_time).nanoseconds / 1e9
         if dt > 0 and dt < 1.0:  # Sanity check - reject huge dt values
-            dx = obs.get('x.vel', 0.0) * dt
+            dx = -obs.get('x.vel', 0.0) * dt  # Fix: Flip forward direction
             dtheta = math.radians(obs.get('theta.vel', 0.0)) * dt
             
             self.x += dx * math.cos(self.theta)
             self.y += dx * math.sin(self.theta)
-            self.theta -= dtheta  # Fix: Mini Mapper theta.vel is opposite to ROS convention
+            self.theta += dtheta  # Revert theta change, try X flip instead
             
             # Debug logging (remove later)
             if msg_count > 1:
