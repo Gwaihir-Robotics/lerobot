@@ -7,6 +7,7 @@ Automatically calibrates odometry by driving towards walls and measuring with li
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
@@ -18,9 +19,16 @@ class AutoCalibrator(Node):
     def __init__(self):
         super().__init__('auto_calibrator')
         
+        # QoS profile for reliable data reception
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,  # Match typical sensor data
+            durability=DurabilityPolicy.VOLATILE,
+            depth=10
+        )
+        
         # Subscribers
-        self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
-        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, qos_profile)
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, qos_profile)
         
         # Publisher
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -101,16 +109,33 @@ class AutoCalibrator(Node):
         
         self.stop_robot()
     
-    def wait_for_data(self, timeout=5.0):
+    def wait_for_data(self, timeout=10.0):
         """Wait for scan and odometry data"""
+        self.get_logger().info(f"Waiting for scan and odometry data...")
+        self.get_logger().info("Make sure Nav2 SLAM is running with: ./start_nav2_slam.sh")
         start_time = time.time()
-        rate = self.create_rate(10)
         
         while (time.time() - start_time) < timeout:
+            # Spin more frequently to ensure we get callbacks
+            rclpy.spin_once(self, timeout_sec=0.1)
+            
+            scan_status = "✅" if self.current_scan is not None else "❌"
+            odom_status = "✅" if self.current_odom is not None else "❌"
+            
+            elapsed = time.time() - start_time
+            self.get_logger().info(f"[{elapsed:.1f}s] Data status - Scan: {scan_status}, Odom: {odom_status}")
+            
             if self.current_scan is not None and self.current_odom is not None:
+                self.get_logger().info("✅ Both scan and odometry data received")
                 return True
-            rate.sleep()
+                
+            time.sleep(0.5)
         
+        self.get_logger().error(f"❌ Timeout waiting for data after {timeout}s")
+        self.get_logger().error("❌ Check that topics /scan and /odom are publishing:")
+        self.get_logger().error("❌   ros2 topic list | grep -E '(scan|odom)'")
+        self.get_logger().error("❌   ros2 topic hz /scan")
+        self.get_logger().error("❌   ros2 topic hz /odom")
         return False
     
     def calibrate_linear(self, target_distance=1.0):
@@ -119,10 +144,18 @@ class AutoCalibrator(Node):
         self.get_logger().info("Position robot facing a wall at least 2 meters away")
         
         # Wait for user confirmation
-        input("Press Enter when robot is positioned facing a wall...")
+        try:
+            input("Press Enter when robot is positioned facing a wall...")
+        except KeyboardInterrupt:
+            self.get_logger().info("❌ Calibration cancelled by user")
+            return None
+        except EOFError:
+            self.get_logger().info("❌ Calibration cancelled (EOF)")
+            return None
         
         if not self.wait_for_data():
             self.get_logger().error("❌ No scan/odometry data received")
+            self.get_logger().error("❌ Make sure Nav2 SLAM is running and publishing /scan and /odom topics")
             return None
         
         # Get initial measurements
@@ -217,9 +250,18 @@ def main():
     except KeyboardInterrupt:
         print(f"\n🛑 Calibration cancelled")
     finally:
-        calibrator.stop_robot()
-        calibrator.destroy_node()
-        rclpy.shutdown()
+        try:
+            calibrator.stop_robot()
+        except Exception as e:
+            print(f"Warning: Failed to stop robot: {e}")
+        try:
+            calibrator.destroy_node()
+        except Exception as e:
+            print(f"Warning: Failed to destroy node: {e}")
+        try:
+            rclpy.shutdown()
+        except Exception as e:
+            print(f"Warning: Failed to shutdown ROS: {e}")
 
 if __name__ == '__main__':
     main()
