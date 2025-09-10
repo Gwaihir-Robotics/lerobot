@@ -2,7 +2,7 @@
 
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -98,9 +98,23 @@ def generate_launch_description():
     return LaunchDescription([
         declare_slam_params_file_cmd,
         declare_use_sim_time_cmd,
-        lidar_node,
+        
+        # Start immediately
         static_transform_publisher,
         robot_state_publisher,
-        mini_mapper_bridge,
-        slam_launch,
+        
+        # Start lidar first, wait for it to initialize
+        lidar_node,
+        
+        # Start bridge after lidar has time to connect (2 second delay)
+        TimerAction(
+            period=2.0,
+            actions=[mini_mapper_bridge]
+        ),
+        
+        # Start SLAM after bridge is ready (3 second delay)
+        TimerAction(
+            period=3.0,
+            actions=[slam_launch]
+        ),
     ])
