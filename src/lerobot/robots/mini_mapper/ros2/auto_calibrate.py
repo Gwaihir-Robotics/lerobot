@@ -245,6 +245,88 @@ class AutoCalibrator(Node):
             self.get_logger().error("❌ No odometry movement detected")
             return None
     
+    def manual_calibrate(self, target_distance=1.0):
+        """Manual calibration where user measures actual distance moved"""
+        self.get_logger().info(f"📏 Starting manual calibration...")
+        self.get_logger().info("You will drive the robot, then measure actual distance with tape measure")
+        
+        if not self.wait_for_data():
+            self.get_logger().error("❌ No scan/odometry data received")
+            return None
+        
+        # Get initial position
+        initial_position = self.get_current_position()
+        if not initial_position:
+            self.get_logger().error("❌ Cannot get initial position")
+            return None
+        
+        self.get_logger().info(f"📍 Initial odometry position: ({initial_position[0]:.3f}, {initial_position[1]:.3f})")
+        
+        # Calculate drive time for target distance
+        drive_time = target_distance / self.calibration_speed
+        
+        self.get_logger().info(f"🚗 Driving forward {target_distance}m (commanded)...")
+        
+        # Drive forward
+        self.drive_forward(drive_time)
+        
+        # Wait a moment for data to stabilize
+        time.sleep(0.5)
+        
+        # Get final position
+        final_position = self.get_current_position()
+        if not final_position:
+            self.get_logger().error("❌ Cannot get final position")
+            return None
+        
+        # Calculate odometry movement
+        odom_movement = math.sqrt((final_position[0] - initial_position[0])**2 + 
+                                 (final_position[1] - initial_position[1])**2)
+        
+        self.get_logger().info(f"📍 Final odometry position: ({final_position[0]:.3f}, {final_position[1]:.3f})")
+        self.get_logger().info(f"📐 Odometry measured movement: {odom_movement:.3f}m")
+        self.get_logger().info(f"📐 Commanded movement: {target_distance:.3f}m")
+        
+        # Ask user for actual measurement
+        print(f"\n📏 Please measure the ACTUAL distance the robot moved:")
+        print(f"   Use a tape measure from start to end position")
+        print(f"   Odometry reported: {odom_movement:.3f}m")
+        print(f"   Commanded: {target_distance:.3f}m")
+        
+        while True:
+            try:
+                actual_str = input(f"Enter actual distance moved (in meters): ").strip()
+                actual_movement = float(actual_str)
+                if actual_movement > 0:
+                    break
+                else:
+                    print("❌ Distance must be positive. Try again.")
+            except ValueError:
+                print("❌ Please enter a valid number (e.g., 0.85)")
+            except (KeyboardInterrupt, EOFError):
+                self.get_logger().info("❌ Manual calibration cancelled")
+                return None
+        
+        # Calculate calibration factor
+        if odom_movement > 0:
+            # Scale factor to correct odometry to match actual
+            odom_scale = actual_movement / odom_movement
+            self.get_logger().info(f"📏 User measured actual movement: {actual_movement:.3f}m")
+            self.get_logger().info(f"🔧 Recommended odometry scale factor: {odom_scale:.3f}")
+            self.get_logger().info(f"🔧 Update bridge: self.linear_scale = {odom_scale:.3f}")
+            
+            # Accuracy metrics
+            commanded_error = abs(target_distance - actual_movement)
+            odom_error = abs(target_distance - odom_movement)
+            
+            self.get_logger().info(f"📊 Commanded vs Actual error: {commanded_error:.3f}m ({commanded_error/target_distance*100:.1f}%)")
+            self.get_logger().info(f"📊 Odometry error (before correction): {odom_error:.3f}m ({odom_error/target_distance*100:.1f}%)")
+            
+            return odom_scale
+        else:
+            self.get_logger().error("❌ No odometry movement detected")
+            return None
+
     def calibrate_angular(self):
         """Calibrate angular movement using wall detection"""
         self.get_logger().info("🔄 Angular calibration not yet implemented")
@@ -273,6 +355,7 @@ def main():
             print(f"\n📍 Choose an action:")
             print("  [Enter] - Start calibration")
             print("  [t] - Test movement")
+            print("  [m] - Manual calibration (you measure actual distance)")
             print("  [s] - Stop robot")
             print("  [q] - Quit")
             
@@ -309,8 +392,18 @@ def main():
                         print("❌ Could not get final position")
                 else:
                     print("❌ Could not get initial position")
+            elif choice == 'm':
+                print(f"\n📏 Manual calibration mode...")
+                result = calibrator.manual_calibrate(target_distance=1.0)
+                
+                if result:
+                    print(f"\n✅ Manual calibration complete!")
+                    print(f"🔧 Recommended linear_scale = {result:.3f}")
+                    print(f"🔧 Update bridge: self.linear_scale = {result:.3f}")
+                else:
+                    print(f"\n❌ Manual calibration failed - try again or check setup")
             elif choice == '' or choice == 'c':  # Enter or 'c' for calibrate
-                print(f"\n🎯 Starting calibration...")
+                print(f"\n🎯 Starting automatic calibration...")
                 result = calibrator.calibrate_linear(target_distance=1.0)
                 
                 if result:
@@ -320,7 +413,7 @@ def main():
                 else:
                     print(f"\n❌ Calibration failed - try again or check setup")
             else:
-                print(f"❓ Unknown command '{choice}' - try [Enter], t, s, or q")
+                print(f"❓ Unknown command '{choice}' - try [Enter], t, m, s, or q")
             
     except KeyboardInterrupt:
         print(f"\n🛑 Calibration cancelled")

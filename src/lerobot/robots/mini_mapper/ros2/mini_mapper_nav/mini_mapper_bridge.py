@@ -38,8 +38,8 @@ class MiniMapperBridge(Node):
         self.theta = 0.0
         self.last_time = self.get_clock().now()
         
-        # Odometry calibration factors (adjust based on real-world testing)
-        self.linear_scale = 0.66  # Calibrated: 1.0m actual / 1.53m reported = 0.66
+        # Odometry calibration factors (adjust based on real-world testing)  
+        self.linear_scale = 0.66  # Previous calibration - will update after manual measurement
         self.angular_scale = 1.0  # Test angular next
         
         self.get_logger().info('Mini Mapper bridge initialized - odometry starts at origin (0,0,0)')

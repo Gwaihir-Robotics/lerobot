@@ -36,11 +36,11 @@ slam_toolbox:
     stack_size_to_use: 40000000 # program needs a larger stack size to serialize large maps
     enable_interactive_mode: true
 
-    # General Parameters - tuned for Mini Mapper with better loop closure
+    # General Parameters - more forgiving for calibration phase
     use_scan_matching: true
     use_scan_barycenter: true
-    minimum_travel_distance: 0.1   # Slightly larger for stability
-    minimum_travel_heading: 0.1    # Slightly larger for stability
+    minimum_travel_distance: 0.05   # Smaller - update map more frequently
+    minimum_travel_heading: 0.05    # Smaller - update map more frequently
     scan_buffer_size: 10
     scan_buffer_maximum_scan_distance: 10.0
     link_match_minimum_response_fine: 0.1  
