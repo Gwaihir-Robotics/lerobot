@@ -94,20 +94,35 @@ class AutoCalibrator(Node):
         """Stop the robot"""
         twist = Twist()
         self.cmd_pub.publish(twist)
+        self.get_logger().info("🛑 Stop command sent")
+        
+        # Send stop command multiple times to ensure it's received
+        for i in range(5):
+            self.cmd_pub.publish(twist)
+            time.sleep(0.1)
     
     def drive_forward(self, duration):
         """Drive forward for specified duration"""
+        self.get_logger().info(f"🚗 Starting {duration:.1f}s forward drive at {self.calibration_speed}m/s")
+        
         twist = Twist()
         twist.linear.x = self.calibration_speed
         
         start_time = time.time()
-        rate = self.create_rate(20)  # 20 Hz
         
+        # Publish commands at 10Hz to match expected rate
         while (time.time() - start_time) < duration:
             self.cmd_pub.publish(twist)
-            rate.sleep()
+            elapsed = time.time() - start_time
+            if int(elapsed * 2) % 2 == 0:  # Log every 0.5s
+                self.get_logger().info(f"⏱️  Driving: {elapsed:.1f}s / {duration:.1f}s")
+            
+            # Spin to handle callbacks and sleep
+            rclpy.spin_once(self, timeout_sec=0.05)
+            time.sleep(0.05)  # 20Hz
         
         self.stop_robot()
+        self.get_logger().info(f"✅ Drive complete: {duration:.1f}s finished")
     
     def wait_for_data(self, timeout=10.0):
         """Wait for scan and odometry data"""
@@ -141,17 +156,7 @@ class AutoCalibrator(Node):
     def calibrate_linear(self, target_distance=1.0):
         """Calibrate linear movement by driving towards a wall"""
         self.get_logger().info(f"🎯 Starting linear calibration...")
-        self.get_logger().info("Position robot facing a wall at least 2 meters away")
-        
-        # Wait for user confirmation
-        try:
-            input("Press Enter when robot is positioned facing a wall...")
-        except KeyboardInterrupt:
-            self.get_logger().info("❌ Calibration cancelled by user")
-            return None
-        except EOFError:
-            self.get_logger().info("❌ Calibration cancelled (EOF)")
-            return None
+        self.get_logger().info("Make sure robot is positioned facing a wall at least 2 meters away")
         
         if not self.wait_for_data():
             self.get_logger().error("❌ No scan/odometry data received")
@@ -168,6 +173,26 @@ class AutoCalibrator(Node):
         
         self.get_logger().info(f"📏 Initial distance to wall: {initial_distance:.3f}m")
         self.get_logger().info(f"📍 Initial odometry position: ({initial_position[0]:.3f}, {initial_position[1]:.3f})")
+        
+        # Test robot movement first with a small movement
+        self.get_logger().info("🧪 Testing robot movement with 0.1m test drive...")
+        test_drive_time = 0.1 / self.calibration_speed
+        self.drive_forward(test_drive_time)
+        
+        # Wait for movement to settle
+        time.sleep(1.0)
+        
+        # Check if robot moved
+        rclpy.spin_once(self, timeout_sec=0.1)
+        test_position = self.get_current_position()
+        if test_position:
+            test_movement = math.sqrt((test_position[0] - initial_position[0])**2 + 
+                                    (test_position[1] - initial_position[1])**2)
+            self.get_logger().info(f"🧪 Test movement: {test_movement:.3f}m odometry reported")
+            
+            if test_movement < 0.01:
+                self.get_logger().error("❌ Robot didn't move in test! Check Mini Mapper host connection")
+                return None
         
         # Calculate drive time for target distance
         drive_time = target_distance / self.calibration_speed
@@ -237,15 +262,65 @@ def main():
     print("  1. Robot should be positioned facing a flat wall")
     print("  2. At least 2 meters clearance to wall")
     print("  3. SLAM system should be running")
+    print("\n🎮 Commands:")
+    print("  [Enter] - Start/retry calibration")
+    print("  [q] - Quit")
+    print("  [t] - Test robot movement (small 0.1m drive)")
+    print("  [s] - Emergency stop")
     
     try:
-        result = calibrator.calibrate_linear(target_distance=1.0)
-        
-        if result:
-            print(f"\n✅ Calibration complete!")
-            print(f"🔧 Update your bridge with: linear_scale = {result:.3f}")
-        else:
-            print(f"\n❌ Calibration failed")
+        while True:
+            print(f"\n📍 Choose an action:")
+            print("  [Enter] - Start calibration")
+            print("  [t] - Test movement")
+            print("  [s] - Stop robot")
+            print("  [q] - Quit")
+            
+            try:
+                choice = input("\nCommand: ").lower().strip()
+            except (KeyboardInterrupt, EOFError):
+                print(f"\n🛑 Exiting...")
+                break
+                
+            if choice == 'q':
+                print(f"\n👋 Goodbye!")
+                break
+            elif choice == 's':
+                print(f"\n🛑 Emergency stop...")
+                calibrator.stop_robot()
+                print("✅ Robot stopped")
+            elif choice == 't':
+                print(f"\n🧪 Testing robot movement...")
+                if not calibrator.wait_for_data(timeout=5.0):
+                    print("❌ No sensor data - check SLAM system")
+                    continue
+                    
+                initial_pos = calibrator.get_current_position()
+                if initial_pos:
+                    calibrator.drive_forward(0.1 / calibrator.calibration_speed)  # 0.1m test
+                    time.sleep(1.0)
+                    rclpy.spin_once(calibrator, timeout_sec=0.1)
+                    final_pos = calibrator.get_current_position()
+                    if final_pos:
+                        movement = math.sqrt((final_pos[0] - initial_pos[0])**2 + 
+                                           (final_pos[1] - initial_pos[1])**2)
+                        print(f"✅ Test complete: {movement:.3f}m movement reported")
+                    else:
+                        print("❌ Could not get final position")
+                else:
+                    print("❌ Could not get initial position")
+            elif choice == '' or choice == 'c':  # Enter or 'c' for calibrate
+                print(f"\n🎯 Starting calibration...")
+                result = calibrator.calibrate_linear(target_distance=1.0)
+                
+                if result:
+                    print(f"\n✅ Calibration complete!")
+                    print(f"🔧 Recommended linear_scale = {result:.3f}")
+                    print(f"🔧 Update bridge: self.linear_scale = {result:.3f}")
+                else:
+                    print(f"\n❌ Calibration failed - try again or check setup")
+            else:
+                print(f"❓ Unknown command '{choice}' - try [Enter], t, s, or q")
             
     except KeyboardInterrupt:
         print(f"\n🛑 Calibration cancelled")
